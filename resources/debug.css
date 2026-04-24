@@ -1,0 +1,56 @@
+body {
+    font-family: var(--vscode-editor-font-family);
+    background: var(--vscode-editor-background);
+    color: var(--vscode-editor-foreground);
+    padding: 15px;
+}
+
+.debug-title {
+    color: var(--vscode-errorForeground);
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 15px;
+    white-space: pre-wrap;
+}
+
+.section-label {
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.restarts-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.restarts-table tr {
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.restarts-table tr:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+
+td { vertical-align: top; }
+
+.restart-kbd {
+    text-align: center;
+    padding-right: 1em;
+}
+
+.cmd {
+    font-weight: bold;
+    padding-right: 1em;
+}
+
+
+.frame-item {
+    font-size: 0.9em;
+    padding: 2px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.9;
+}

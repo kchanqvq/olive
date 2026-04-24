@@ -1,0 +1,85 @@
+{
+  "name": "Lisp",
+  "scopeName": "source.lisp",
+  "fileTypes": [
+    "lisp",
+    "lsp",
+    "cl",
+    "l"
+  ],
+  "foldingStartMarker": "\\(\\s*$",
+  "foldingStopMarker": "^\\s*\\)",
+  "patterns": [
+    {
+      "match": "(;).*$\\n?",
+      "name": "comment.lisp"
+    },
+    {
+      "match": "(?i)((?:[^\\s\\(\\)]+:)?(?:define-[^\\s\\(\\)]*|defclass|defconstant|defgeneric|defmacro|defmethod|defpackage|defparameter|defsetf|defstruct|defsubst|deftype|defun|defvar))(?:\\s+(\\(\\s*setf\\s+[^\\s\\(\\)]+\\s*\\))|\\s+([^\\s\\(\\)]+)|\\)|\\s)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.lisp"
+        },
+        "3": {
+          "name": "entity.name.lisp"
+        },
+        "4": {
+          "name": "entity.name.lisp"
+        }
+      },
+      "name": "meta.function.lisp"
+    },
+    {
+      "match": "(#)(\\w|[\\\\+-=<>\u0027\"&#])",
+      "name": "constant.character.lisp"
+    },
+    {
+      "match": "(?:^|\\s|\\()((:|&)[^\\s\\(\\)]*)",
+      "captures": {
+        "1": {
+          "name": "keyword.other.lisp"
+        }
+      }
+    },
+    {
+      "match": "(\\*)([^\\s\\(\\)]*)(\\*)",
+      "name": "variable.other.global.lisp"
+    },
+    {
+      "match": "(\\+)([^\\s\\(\\)]*)(\\+)",
+      "name": "constant.other.lisp"
+    },
+    {
+      "match": "(?:^|(?<=[\\s\\(\\)]))(?i:(?:[^\\s\\(\\)]+:)?(?:do-|with-|without-)[^\\s\\(\\)]*)(?=[\\s\\(\\)])",
+      "name": "keyword.control.lisp"
+    },
+    {
+      "match": "(?:^|(?<=[\\s\\(\\)]))(?i:block|break|case|ccase|compiler-let|cond|condition-case|ctypecase|declaim|declare|destructuring-bind|do|do\\*|dolist|dotimes|ecase|etypecase|eval-when|flet|flet\\*|go|handler-bind|handler-case|if|ignore-errors|in-package|labels|lambda|let|let\\*|letf|locally|loop|macrolet|multiple-value-bind|multiple-value-prog1|proclaim|prog|prog\\*|prog1|prog2|progn|progv|restart-bind|restart-case|return|return-from|symbol-macrolet|tagbody|the|typecase|unless|unwind-protect|when|while|with-accessors|with-compilation-unit|with-condition-restarts|with-hash-table-iterator|with-input-from-string|with-open-file|with-open-stream|with-output-to-string|with-package-iterator|with-simple-restart|with-slots|with-standard-io-syntax)(?=[\\s\\(\\)])",
+      "name": "keyword.control.lisp"
+    },
+    {
+      "match": "\\b(?i:t|nil)\\b",
+      "name": "constant.language.boolean.lisp"
+    },
+    {
+      "match": "\\b((([0-9]+\\.?[0-9]*)|(\\.[0-9]+))((e|E)(\\+|-)?[0-9]+)?)\\b",
+      "name": "constant.numeric.lisp"
+    },
+    {
+      "begin": "\"",
+      "end": "\"",
+      "name": "string.quoted.double.lisp",
+      "patterns": [
+        {
+          "match": "\\\\.",
+          "name": "constant.character.escape.lisp"
+        }
+      ]
+    },
+    {
+      "begin": "#\\|",
+      "end": "\\|#",
+      "name": "comment.block.hash.lisp"
+    }
+  ]
+}

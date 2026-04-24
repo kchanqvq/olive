@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}} 'unsafe-inline'; script-src {{cspSource}} 'unsafe-inline';">
+    <link rel="stylesheet" href="{{cssUri}}">
+</head>
+<body>
+    <div id="root">
+        <div class="debug-title" id="debug-title">Loading...</div>
+        
+        <div class="section-label">Restarts:</div>
+        <div class="restarts" id="restarts"></div>
+        
+        <div class="section-label">Backtrace:</div>
+        <div class="frames" id="frames"></div>
+    </div>
+
+    <script src="{{jsUri}}"></script>
+</body>
+</html>

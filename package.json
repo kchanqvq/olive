@@ -1,0 +1,236 @@
+{
+  "name": "olive",
+  "displayName": "Olive",
+  "description": "A SLIME-style Lisp REPL for VSCode",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "olive-repl-container",
+          "title": "REPL",
+          "icon": "$(repl)"
+        }
+      ]
+    },
+    "views": {
+      "olive-repl-container": [
+        {
+          "type": "webview",
+          "id": "olive.replView",
+          "name": "REPL"
+        }
+      ]
+    },
+    "languages": [
+      {
+        "id": "common-lisp",
+        "aliases": [
+          "Common Lisp",
+          "lisp"
+        ],
+        "extensions": [
+          ".lisp",
+          ".lsp",
+          ".cl",
+          ".l"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "common-lisp",
+        "scopeName": "source.lisp",
+        "path": "./syntaxes/lisp.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "olive.startLisp",
+        "category": "Olive",
+        "title": "Start Lisp and Connect"
+      },
+      {
+        "command": "olive.connect",
+        "category": "Olive",
+        "title": "Connect to Swank Server"
+      },
+      {
+        "command": "olive.disconnect",
+        "category": "Olive",
+        "title": "Disconnect from Swank Server"
+      },
+      {
+        "command": "olive.interrupt",
+        "category": "Olive",
+        "title": "Interrupt"
+      },
+      {
+        "command": "olive.evaluating",
+        "category": "Olive",
+        "title": "Evaluating... (Click to Interrupt)",
+        "icon": "$(loading~spin)"
+      },
+      {
+        "command": "olive.clearRepl",
+        "category": "Olive",
+        "title": "Clear REPL Output",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "olive.syncRepl",
+        "category": "Olive",
+        "title": "Sync REPL package and default directory with editor",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "olive.setReplPackage",
+        "category": "Olive",
+        "title": "Set REPL package",
+        "icon": "$(symbol-module)"
+      },
+      {
+        "command": "olive.compileFile",
+        "category": "Olive",
+        "title": "Compile and load file",
+        "icon": "$(run)"
+      },
+      {
+        "command": "olive.compileFileDebug",
+        "category": "Olive",
+        "title": "Compile and load file for debug",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "olive.loadWorkspaceSystem",
+        "category": "Olive",
+        "title": "Load ASDF system for current workspace"
+      },
+      {
+        "command": "olive.indentLine",
+        "category": "Olive",
+        "title": "Indent Line"
+      },
+      {
+        "command": "olive.newlineAndIndent",
+        "category": "Olive",
+        "title": "Newline and Indent"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "olive.compileFile",
+        "key": "f5",
+        "when": "olive.activeLangId == common-lisp"
+      },
+      {
+        "command": "olive.compileFileDebug",
+        "key": "shift+f5",
+        "when": "olive.activeLangId == common-lisp"
+      },
+      {
+        "command": "olive.loadWorkspaceSystem",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l"
+      },
+      {
+        "command": "olive.startLisp",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r"
+      },
+      {
+        "command": "olive.indentLine",
+        "key": "tab",
+        "when": "editorTextFocus && editorLangId == 'common-lisp' && !editorTabMovesFocus && !suggestWidgetVisible && !inSnippetMode && !inlineSuggestionVisible"
+      },
+      {
+        "command": "olive.newlineAndIndent",
+        "key": "enter",
+        "when": "editorTextFocus && editorLangId == 'common-lisp'"
+      }
+    ],
+    "configuration": {
+      "title": "Olive",
+      "properties": {
+        "olive.lispCommand": {
+          "type": "string",
+          "default": "sbcl",
+          "description": "Command to start the Lisp subprocess."
+        },
+        "olive.autostart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start Lisp when the extension activates."
+        }
+      }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "olive.evaluating",
+          "when": "view == olive.replView && olive.isEvaluating",
+          "group": "navigation"
+        },
+        {
+          "command": "olive.syncRepl",
+          "when": "view == olive.replView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "olive.setReplPackage",
+          "when": "view == olive.replView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "olive.clearRepl",
+          "when": "view == olive.replView",
+          "group": "navigation@3"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "olive.compileFile",
+          "when": "editorLangId == common-lisp",
+          "group": "navigation"
+        },
+        {
+          "command": "olive.compileFileDebug",
+          "when": "editorLangId == common-lisp",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run bundle",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "bundle": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:swank-client --external:paredit.js --format=cjs --platform=node",
+    "fetch-slime": "curl -L https://github.com/slime/slime/archive/refs/tags/v2.32.tar.gz | tar xz && rm -rf slime && mv slime-2.32 slime",
+    "bundle-watch": "npm run bundle -- --watch",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^16.18.126",
+    "@types/vscode": "1.75.0",
+    "@typescript-eslint/eslint-plugin": "^5.48.1",
+    "@typescript-eslint/parser": "^5.48.1",
+    "esbuild": "^0.17.5",
+    "eslint": "^8.31.0",
+    "typescript": "^4.9.4"
+  },
+  "dependencies": {
+    "paredit.js": "^0.4.0",
+    "swank-client": "git+https://github.com/kchanqvq/swank-client.git"
+  }
+}
