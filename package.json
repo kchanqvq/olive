@@ -155,7 +155,7 @@
       {
         "command": "olive.newlineAndIndent",
         "key": "enter",
-        "when": "editorTextFocus && editorLangId == 'common-lisp'"
+        "when": "editorTextFocus && editorLangId == 'common-lisp' && !editorTabMovesFocus && !suggestWidgetVisible && !inSnippetMode && !inlineSuggestionVisible"
       }
     ],
     "configuration": {

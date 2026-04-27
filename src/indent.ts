@@ -70,17 +70,6 @@ export function getSubSpec(spec: NIndentSpec, argIdx: number): IndentSpec {
     return spec.at(-1) || 'nil';
 }
 
-export function findPath(node: any, offset: number): any[] {
-    const path: any [] = [];
-    let curr = node;
-    while (curr) {
-        path.push(curr);
-        curr = curr.children?.find((c: any) => offset > c.start &&
-            offset < (c.type == 'error' ? c.end + 1 : c.end));
-    }
-    return path;
-}
-
 export function getColumn(text: string, offset: number): number {
     const lastNewline = text.lastIndexOf('\n', offset - 1);
     return offset - (lastNewline + 1);
@@ -97,16 +86,12 @@ export function getLine(text: string, offset: number): number {
     return line;
 }
 
-function isList(node: any): Boolean {
-    return node.type == 'list' || node.type == 'error' && node.open == '(';
-}
-
 export function getSpecFromPath(text: string, path: any[], bufferPkg: string, systemSpecs: Map<string, Map<string, IndentSpec>>): NIndentSpec {
     let spec: NIndentSpec = 'nil';
     let parent: any = null;
 
     for (const node of path) {
-        if (!isList(node)) continue;
+        if (!paredit.walk.hasChildren(node) || node.type === 'toplevel') continue;
 
         const sub: NIndentSpec = parent ? getSubSpec(spec, (parent.children || []).indexOf(node)) : 'nil';
 
@@ -115,7 +100,7 @@ export function getSpecFromPath(text: string, path: any[], bufferPkg: string, sy
         } else {
             const op = node.children[0];
             const opName = op?.type === 'symbol' 
-                ? (op.source || text.substring(op.start, op.end)).toLowerCase() 
+                ? paredit.walk.source(text, op).toLowerCase()
                 : null;
             spec = opName ? resolveSpec(opName, bufferPkg, systemSpecs) : 'nil';
         }
@@ -144,19 +129,21 @@ export function computeIndent(
 export function getExpectedIndent(text: string, offset: number, bufferPkg: string, systemSpecs: Map<string, Map<string, IndentSpec>>, ast?: any): number {
     if (!ast) ast = paredit.parse(text);
 
-    const path = findPath(ast, offset), node = path.at(-1);
-    if (!isList(node)) return 0;
+    const path = paredit.walk.containingSexpsAt(ast, offset);
+    const node = path.at(-1);
 
-    const children = node.children;
+    if (!node || !paredit.walk.hasChildren(node) || node.type === 'toplevel') return 0;
+
+    const children = node.children || [];
     let childIdx = children.findIndex((c: any) => offset <= c.start);
     if (childIdx == -1) childIdx = children.length;
 
     const parentStart = getColumn(text, node.start);
 
-    const firstArg = node.children?.[1];
+    const firstArg = children[1];
     const firstArgCol = firstArg && getColumn(text, firstArg.start);
 
-    const spec = getSpecFromPath(text, path.slice(0, path.indexOf(node) + 1), bufferPkg, systemSpecs);
+    const spec = getSpecFromPath(text, path, bufferPkg, systemSpecs);
 
     return computeIndent(parentStart, childIdx, spec, firstArgCol);
 }
