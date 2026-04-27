@@ -168,9 +168,18 @@ function showCompletions(items, reqId) {
     selectedIndex = 0;
     updateSelection();
 
+    const rh = document.documentElement.clientHeight;
+    const mh = 200;
     const rect = currentInput.getBoundingClientRect();
-    completionList.style.top = (rect.bottom + 5) + 'px';
     completionList.style.left = rect.left + 'px';
+    if (rect.top > rh - rect.bottom && rect.bottom + mh > rh) {
+        completionList.style.top = (rect.top - 5 < mh) ? '0' : null;
+        completionList.style.bottom = (rh - rect.top + 5) + 'px';
+    }
+    else {
+        completionList.style.top = (rect.bottom + 5) + 'px';
+        completionList.style.bottom = null;
+    }
 }
 
 function updateSelection() {
