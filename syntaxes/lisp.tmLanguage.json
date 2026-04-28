@@ -11,6 +11,14 @@
   "foldingStopMarker": "^\\s*\\)",
   "patterns": [
     {
+      "match": "\\\\.",
+      "name": "constant.character.escape.lisp"
+    },
+    {
+      "match": "#\\\\([\\w-]+|.)",
+      "name": "constant.character.lisp"
+    },
+    {
       "match": "(;).*$\\n?",
       "name": "comment.lisp"
     },
@@ -28,10 +36,6 @@
         }
       },
       "name": "meta.function.lisp"
-    },
-    {
-      "match": "(#)(\\w|[\\\\+-=<>\u0027\"&#])",
-      "name": "constant.character.lisp"
     },
     {
       "match": "(?:^|\\s|\\()((:|&)[^\\s\\(\\)]*)",
