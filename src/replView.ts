@@ -54,7 +54,7 @@ export class ReplView implements vscode.WebviewViewProvider {
             if (!pkg) return;
         }
         const res = await this.client.rex(`(SWANK:SET-PACKAGE ${util.to_lisp_string(pkg)})`, 'COMMON-LISP-USER', ':REPL-THREAD');
-        if (res.type == 'list') {
+        if (res.type === 'list') {
             this.currentPackage = util.from_lisp_string(res.children[0]);
             this.currentNickname = util.from_lisp_string(res.children[1]);
             this.post('setPrompt', { package: this.currentNickname });

@@ -40,7 +40,7 @@ export function convertSeverity(severity: string): vscode.DiagnosticSeverity {
 }
 
 export function convertPosition(doc: vscode.TextDocument, sexp: any): vscode.Position {
-    if (sexp.children[0].source.toLowerCase() == ':position') {
+    if (sexp.children[0].source.toLowerCase() === ':position') {
         return doc.positionAt(Number(sexp.children[1].source) - 1);
     } else {
         return new vscode.Position(0,0);
@@ -52,8 +52,8 @@ function sexpRange(text: string): [number, number | undefined]{
     for (let i = 0; i < text.length; i++) {
         const c = text[i];
         if (stringp) {
-            if (c == '\\') i++;
-            else if (c == '"') {
+            if (c === '\\') i++;
+            else if (c === '"') {
                 stringp = false;
                 depth--;
                 if (depth <= 0) return [start, i];}
@@ -110,11 +110,11 @@ export async function convertDefinition(sexp: any): Promise<vscode.Location | un
     // we throw away the label because VSCode don't have it
     const location = sexp.children[1];
     const buffer = location.children[1];
-    if (buffer.children[0].source.toLowerCase() == ':file') {
+    if (buffer.children[0].source.toLowerCase() === ':file') {
         const uri = vscode.Uri.file(util.from_lisp_string(buffer.children[1]));
         const doc = await vscode.workspace.openTextDocument(uri);
         return new vscode.Location(uri, convertPosition(doc, location.children[2]));
-    } else if (buffer.children[0].source.toLowerCase() == ':buffer-and-file') {
+    } else if (buffer.children[0].source.toLowerCase() === ':buffer-and-file') {
         const uri = vscode.Uri.file(util.from_lisp_string(buffer.children[2]));
         const doc = await vscode.workspace.openTextDocument(uri);
         return new vscode.Location(uri, convertPosition(doc, location.children[2]));
@@ -133,7 +133,7 @@ export function convertDescribeSymbol(sexp: any): vscode.MarkdownString | undefi
         const markdown = new vscode.MarkdownString();
         for (let i = 0; i < sexp.children.length; i += 2) {
             const name = kebabToCapitalized(sexp.children[i].source.slice(1));
-            const doc = sexp.children[i + 1].type == 'string' && util.from_lisp_string(sexp.children[i + 1]);
+            const doc = sexp.children[i + 1].type === 'string' && util.from_lisp_string(sexp.children[i + 1]);
             markdown.appendMarkdown(`**${name}:** ${doc || '*(undocumented)*'}\n\n`);
         }
         return markdown;
@@ -141,16 +141,16 @@ export function convertDescribeSymbol(sexp: any): vscode.MarkdownString | undefi
 }
 
 export function convertInspect (sexp: any): vscode.MarkdownString | undefined {
-    if (sexp.type == 'list') {
+    if (sexp.type === 'list') {
         const markdown = new vscode.MarkdownString();
         for (const c of sexp.children) {
-            if (c.type == 'string') {
+            if (c.type === 'string') {
                 markdown.appendText(util.from_lisp_string(c));
             }
-            else if (c.type == 'list') {
-                if (c.children[0].source.toLowerCase() == ':newline')
+            else if (c.type === 'list') {
+                if (c.children[0].source.toLowerCase() === ':newline')
                     markdown.appendText('\n')
-                else if (c.children[0].source.toLowerCase() == ':value')
+                else if (c.children[0].source.toLowerCase() === ':value')
                     // TODO: this does not work:
                     // - paredit parse #<...> into multiple segment
                     // - the value might be a complex S-expr (e.g. a list)
@@ -162,11 +162,11 @@ export function convertInspect (sexp: any): vscode.MarkdownString | undefined {
 }
 
 export function convertIndentSpec(sexp: any): IndentSpec {
-    if (sexp.type == 'list') {
+    if (sexp.type === 'list') {
         return sexp.children.map(convertIndentSpec);
-    } else if (sexp.type == 'number') {
+    } else if (sexp.type === 'number') {
         return Number(sexp.source);
-    } else if (sexp.type == 'symbol' && sexp.source.toLowerCase() != 'nil') {
+    } else if (sexp.type === 'symbol' && sexp.source.toLowerCase() != 'nil') {
         return sexp.source;
     } else {return 'nil'}
 }

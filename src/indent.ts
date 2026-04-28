@@ -15,11 +15,11 @@ function canonicalizePackage(pkg: string): string {
 // Simple heuristic, only handle standard *READTABLE-CASE*
 function parseSymbol(symbol: string, bufferPkg: string): [string, string] {
     const colonPos = symbol.indexOf(':');
-    if (colonPos == -1)
+    if (colonPos === -1)
         return [symbol, canonicalizePackage(bufferPkg)];
-    else if (colonPos == 0)
+    else if (colonPos === 0)
         return [symbol.slice(1), "KEYWORD"];
-    else if (colonPos + 1 < symbol.length && symbol[colonPos + 1] == ':')
+    else if (colonPos + 1 < symbol.length && symbol[colonPos + 1] === ':')
         return [symbol.slice(colonPos + 2), symbol.slice(0, colonPos).toUpperCase()];
     else
         return [symbol.slice(colonPos + 1), symbol.slice(0, colonPos).toUpperCase()];
@@ -32,12 +32,12 @@ export function resolveSpec(op: string, bufferPkg: string, systemSpecs: Map<stri
     const [symbol, pkg] = parseSymbol(op, bufferPkg);
     let spec = systemSpecs.get(pkg)?.get(symbol) || defaultIndentSpecs[symbol];
     if (!spec) return;
-    if (typeof spec == 'number')
+    if (typeof spec === 'number')
         spec = [...Array(spec).fill(4), '&body']
-    if (spec == 'defun')
+    if (spec === 'defun')
         spec = [4, '&lambda', '&body']
     if (Array.isArray(spec)) {
-        if (spec[0] == 'as')
+        if (spec[0] === 'as')
             return resolveSpec(spec[1], bufferPkg, systemSpecs);
         return [0, ...normalizeSpec(spec, bufferPkg, systemSpecs) as NIndentSpec[]];
     }
@@ -47,7 +47,7 @@ export function resolveSpec(op: string, bufferPkg: string, systemSpecs: Map<stri
 // Desugar some list indent spec
 function normalizeSpec(spec: IndentSpec, bufferPkg: string, systemSpecs: Map<string, Map<string, IndentSpec>>): NIndentSpec {
     if (Array.isArray(spec)) {
-        if (spec[spec.length - 1] == '&body') {
+        if (spec[spec.length - 1] === '&body') {
             spec = [...spec.slice(0, -1), '&rest', 2];
         }
         return spec.map(s => normalizeSpec(s, bufferPkg, systemSpecs));
@@ -123,9 +123,9 @@ export function computeIndent(
     firstArgCol?: number
 ): number {
     const sub = getSubSpec(spec, childIdx);
-    if (Array.isArray(sub) && sub[0] == '&whole' && typeof sub[1] == 'number')
+    if (Array.isArray(sub) && sub[0] === '&whole' && typeof sub[1] === 'number')
         return parentStartCol + sub[1];
-    if (typeof sub == 'number') return parentStartCol + sub;
+    if (typeof sub === 'number') return parentStartCol + sub;
 
     // Default indentation
     if (childIdx === 0) return parentStartCol + 1;
@@ -143,7 +143,7 @@ export function getExpectedIndent(text: string, offset: number, bufferPkg: strin
 
     const children = node.children || [];
     let childIdx = children.findIndex((c: any) => offset <= c.start);
-    if (childIdx == -1) childIdx = children.length;
+    if (childIdx === -1) childIdx = children.length;
 
     const parentStart = getColumn(text, node.start);
 

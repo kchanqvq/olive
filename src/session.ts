@@ -320,7 +320,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                 const cmd = `(SWANK:COMPILE-FILE-FOR-EMACS ${util.to_lisp_string(fileName)} T ${options})`;
                 const res = await this.client.rex(cmd, 'COMMON-LISP-USER', 'T');
 
-                if (res.type == 'list') {
+                if (res.type === 'list') {
                     const success = util.from_lisp_bool(res.children[2]);
                     const duration = Number(res.children[3].source);
                     const faslfile = util.from_lisp_bool(res.children[5]) && util.from_lisp_string(res.children[5]);
@@ -356,7 +356,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                     if (faslfile &&
                         (success ||
                             await vscode.window.showInformationMessage('Compilation failed. Load fasl file anyway?',
-                                { modal: true }, 'Load') == 'Load'))
+                                { modal: true }, 'Load') === 'Load'))
                         this.client.rex(`(SWANK:LOAD-FILE ${util.to_lisp_string(faslfile)})`, 'COMMON-LISP-USER', 'T');
                 }
                 else
@@ -400,7 +400,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         }
 
         const asdFiles = await vscode.workspace.findFiles('**/*.asd', '**/node_modules/**');
-        if (asdFiles.length == 0) {
+        if (asdFiles.length === 0) {
             vscode.window.showErrorMessage('No .asd file found in workspace root directory.')
             return;
         }
@@ -410,8 +410,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         asdFiles.sort((a, b) => {
             const aName = path.basename(a.fsPath, '.asd');
             const bName = path.basename(b.fsPath, '.asd');
-            if (aName == workspaceFolderName) return -1;
-            if (bName == workspaceFolderName) return 1;
+            if (aName === workspaceFolderName) return -1;
+            if (bName === workspaceFolderName) return 1;
             return aName.localeCompare(bName);
         });
 
@@ -423,7 +423,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         const editor = vscode.window.activeTextEditor;
         if (editor) {
             const doc = editor.document, uri = doc.uri;
-            if (uri.scheme == 'file') {
+            if (uri.scheme === 'file') {
                 const dir = path.dirname(uri.fsPath);
                 await this.client.rex(`(SWANK:SET-DEFAULT-DIRECTORY (UIOP:PARSE-NATIVE-NAMESTRING ${util.to_lisp_string(dir)}))`,
                     'COMMON-LISP-USER', ':REPL-THREAD');
@@ -447,7 +447,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             }
             const res = await this.client.rex(`(ASDF:LOAD-SYSTEM ${util.to_lisp_string(systemName)})`,
                 'COMMON-LISP-USER', 'T');
-            const success = res.type == 'symbol' && res.source.toLowerCase() == 't';
+            const success = res.type === 'symbol' && res.source.toLowerCase() === 't';
             if (success) vscode.window.showInformationMessage(`Loaded system ${systemName}`)
             else vscode.window.showInformationMessage(`Failed to load system ${systemName}`)
         })
@@ -532,7 +532,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         const pkg = searchBufferPackage(doc, pos);
         const cmd = `(SWANK:FIND-DEFINITIONS-FOR-EMACS ${util.to_lisp_string(symbol)})`
         const definitions = await this.client.rex(cmd, pkg, ':REPL-THREAD');
-        if (definitions.type == 'list') {
+        if (definitions.type === 'list') {
             const results = await Promise.all(definitions.children.map(convertDefinition));
             return results.filter(Boolean);
         }

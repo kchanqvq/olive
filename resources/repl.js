@@ -69,7 +69,7 @@ function addIndent(value, offset, newline) {
     if (currentInput && !currentInput.disabled) {
         if (newline) offset ++;
         currentInput.setRangeText(' '.repeat(value), offset, offset,
-            (currentInput.selectionStart == offset)? 'end' : 'preserve');
+            (currentInput.selectionStart === offset)? 'end' : 'preserve');
     }
 }
 
@@ -235,8 +235,8 @@ function isBalanced(text) {
         const c = text[i];
         if (comments) { if (c === '\n') comments = false; }
         else if (stringp) {
-            if (c == '\\') i++;
-            else if (c == '"') { stringp = false; depth--; }
+            if (c === '\\') i++;
+            else if (c === '"') { stringp = false; depth--; }
         } else {
             switch (c) {
                 case ';': comments = true; break;
