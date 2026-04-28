@@ -5,11 +5,18 @@ import * as path from 'path';
 import * as os from 'os';
 import { ReplView } from './replView';
 import { DebugView } from './debugView';
-import { plistGet, severityOrder, convertCompilerNote, searchBufferPackage, getSymbol,
+import { plistGet, severityOrder, convertCompilerNote, searchBufferPackage, getSymbol, getLastExpression,
     convertCompletionItem, convertDefinition, convertDescribeSymbol, convertIndentSpec } from './subr';
 import * as indent from './indent';
 const { Client, util } = require('swank-client');
 const paredit = require('paredit.js');
+
+const evalDecorationType = vscode.window.createTextEditorDecorationType({
+    after: {margin: '0 0 0 2em',
+        color: new vscode.ThemeColor('editorCodeLens.foreground')},
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen,
+    isWholeLine: true
+})
 
 export class LispSession implements vscode.DocumentFormattingEditProvider, vscode.DocumentRangeFormattingEditProvider, vscode.CompletionItemProvider, vscode.HoverProvider, vscode.DefinitionProvider {
     public client: any;
@@ -33,6 +40,13 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         this.diagnostics = vscode.languages.createDiagnosticCollection('lisp');
         ctx.subscriptions.push(this.diagnostics);
 
+        ctx.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => {
+            const editor = vscode.window.activeTextEditor;
+            if (editor && e.document === editor.document) {
+                editor.setDecorations(evalDecorationType, []);
+            }
+        }));
+
         this.registerCommands();
     }
 
@@ -47,6 +61,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.setReplPackage', () => this.replProvider.setPackage()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileFile', () => this.compileFile()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileFileDebug', () => this.compileFile(":POLICY '((CL:DEBUG . 3))")));
+        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evalLastExpression', () => this.evalLastExpression()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.loadWorkspaceSystem', () => this.loadWorkspaceSystem()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.indentLine', () => this.indentLine()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.newlineAndIndent', () => this.newlineAndIndent()));
@@ -106,7 +121,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             this.lispOutputChannel = vscode.window.createOutputChannel('Lisp process');
         }
         this.lispOutputChannel.clear();
-        this.lispOutputChannel.show();
+        this.lispOutputChannel.show(true);
         this.statusConnecting();
         const portFile = path.join(os.tmpdir(), `olive-port.${process.pid}`);
 
@@ -253,7 +268,9 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             this.clientReady = true;
             this.statusConnected();
             this.replProvider.setClient(this.client, info);
-            vscode.commands.executeCommand('olive.replView.focus');
+            // hack: reveal REPL view and return focus
+            await vscode.commands.executeCommand('olive.replView.focus')
+            await vscode.commands.executeCommand('workbench.action.focusPreviousGroup');
         } catch (err) {
             this.statusDisconnected();
             vscode.window.showErrorMessage(`Failed to connect: ${err}`);
@@ -289,11 +306,10 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
 
-        if (editor.document.isDirty) {
-            await editor.document.save();
-        }
+        const doc = editor.document;
+        if (doc.isDirty) await doc.save();
 
-        const fileName = editor.document.fileName;
+        const fileName = doc.fileName;
 
         try {
             await vscode.window.withProgress({
@@ -325,12 +341,12 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                             }
                         }
 
-                        this.diagnostics.set(editor.document.uri,
-                            notes.map((n: any) => convertCompilerNote(editor.document, n)));
+                        this.diagnostics.set(doc.uri,
+                            notes.map((n: any) => convertCompilerNote(doc, n)));
 
                     } else {
                         msgParts.push(". (No warnings)  ");
-                        this.diagnostics.set(editor.document.uri, []);
+                        this.diagnostics.set(doc.uri, []);
                     }
 
                     msgParts.push(`[${duration.toFixed(2)} secs]`);
@@ -351,7 +367,32 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         }
     }
 
-    public async loadWorkspaceSystem(){
+    public async evalLastExpression() {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || !this.checkClient()) return;
+
+        const doc = editor.document, pos = editor.selection.active;
+        const range = getLastExpression(doc, pos);
+        if (!range) return;
+
+        const pkg = searchBufferPackage(doc, pos);
+        const code = doc.getText(range);
+
+        editor.setDecorations(evalDecorationType, []);
+        try {
+            const res = await this.client.rex(`(SWANK:INTERACTIVE-EVAL ${util.to_lisp_string(code)} 1 40)`, pkg, ':REPL-THREAD');
+            const resultStr = util.from_lisp_string(res);
+            const lineEnd = doc.lineAt(pos.line).range.end;
+
+            editor.setDecorations(evalDecorationType, [{
+                range: new vscode.Range(lineEnd, lineEnd),
+                renderOptions: {after: {contentText: '; ' + resultStr}}}]);
+        } catch (err) {
+            vscode.window.showErrorMessage(`Evaluation failed: ${err}`);
+        }
+    }
+
+    public async loadWorkspaceSystem() {
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (!workspaceRoot) {
             vscode.window.showErrorMessage('Cannot find workspace root directory.');
@@ -378,7 +419,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         await this.loadSystem(path.basename(winner, '.asd'), winner);
     }
 
-    public async syncRepl(){
+    public async syncRepl() {
         const editor = vscode.window.activeTextEditor;
         if (editor) {
             const doc = editor.document, uri = doc.uri;
@@ -414,7 +455,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
 
     public async indentLine() {
         const editor = vscode.window.activeTextEditor;
-        if (editor && editor.document.languageId === 'common-lisp') {
+        if (editor) {
             const doc = editor.document;
             const lineIdx = editor.selection.active.line;
             const line = doc.lineAt(lineIdx);
@@ -426,7 +467,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             const actual = line.text.match(/^\s*/)?.[0].length || 0;
             if (actual !== desired) {
                 const workspaceEdit = new vscode.WorkspaceEdit();
-                workspaceEdit.set(editor.document.uri, [vscode.TextEdit.replace(new vscode.Range(lineIdx, 0, lineIdx, actual), ' '.repeat(desired))]);
+                workspaceEdit.set(doc.uri, [vscode.TextEdit.replace(new vscode.Range(lineIdx, 0, lineIdx, actual), ' '.repeat(desired))]);
                 await vscode.workspace.applyEdit(workspaceEdit);
             }
         }
@@ -434,11 +475,11 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
 
     public async newlineAndIndent() {
         const editor = vscode.window.activeTextEditor;
-        if (editor && editor.document.languageId === 'common-lisp') {
-            const pos = editor.selection.active;
-            const text = editor.document.getText();
-            const pkg = searchBufferPackage(editor.document, pos);
-            const indentVal = indent.getExpectedIndent(text, editor.document.offsetAt(pos), pkg, this.systemSpecs);
+        if (editor) {
+            const doc = editor.document, pos = editor.selection.active;
+            const text = doc.getText();
+            const pkg = searchBufferPackage(doc, pos);
+            const indentVal = indent.getExpectedIndent(text, doc.offsetAt(pos), pkg, this.systemSpecs);
             await editor.edit(editBuilder => {
                 editBuilder.replace(editor.selection, '\n' + ' '.repeat(indentVal));
             });

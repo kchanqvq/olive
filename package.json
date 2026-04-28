@@ -111,6 +111,11 @@
         "icon": "$(debug-alt)"
       },
       {
+        "command": "olive.evalLastExpression",
+        "category": "Olive",
+        "title": "Evaluate last expression"
+      },
+      {
         "command": "olive.loadWorkspaceSystem",
         "category": "Olive",
         "title": "Load ASDF system for current workspace"
@@ -136,6 +141,11 @@
         "command": "olive.compileFileDebug",
         "key": "shift+f5",
         "when": "olive.activeLangId == common-lisp"
+      },
+      {
+        "command": "olive.evalLastExpression",
+        "key": "shift+enter",
+        "when": "editorLangId == common-lisp"
       },
       {
         "command": "olive.loadWorkspaceSystem",

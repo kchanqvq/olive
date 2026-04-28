@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import {IndentSpec} from './indent'
 const { util } = require('swank-client');
+const paredit = require('paredit.js');
 
 export const kindTable: Record<string, vscode.CompletionItemKind> = {
     b: vscode.CompletionItemKind.Variable,
@@ -188,4 +189,18 @@ export function searchBufferPackage(doc: vscode.TextDocument, pos: vscode.Positi
 export function getSymbol(doc: vscode.TextDocument, pos: vscode.Position): string | undefined {
     const range = doc.getWordRangeAtPosition(pos);
     return range && doc.getText(range);
+}
+
+export function getLastExpression(doc: vscode.TextDocument, pos: vscode.Position, ast ?: any): vscode.Range | undefined {
+    const text = doc.getText();
+    const offset = doc.offsetAt(pos);
+    if (!ast) ast = paredit.parse(text);
+    const nodes = paredit.walk.sexpsAt(ast, offset);
+    let node = nodes.filter((n: any) => n.type !== 'toplevel' && n.type !== 'list' && n.type !== 'error' && n.type !== 'comment').pop();
+    if (!node) {
+        node = paredit.walk.prevSexp(ast, offset, (n: any) => n.type !== 'comment');
+    }
+    if (node) {
+        return new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));
+    }
 }

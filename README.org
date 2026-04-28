@@ -12,4 +12,6 @@ The play button (also key ~F5~) on the top right of the editor window compiles a
 
 [[demo/file.gif]]
 
+=Shift+Enter= evaluates the expression before it and display the result.
+
 Most Lisp projects use the [[https://asdf.common-lisp.dev/][ASDF]] build system. ~Ctrl/Cmd+Shift+L~ tries to find a system definition (~.asd~) file under workspace root and load the system. This is handy for loading or reloading all Lisp files in your project and dependencies, after you wrote a working ~.asd~ file ([[https://lispcookbook.github.io/cl-cookbook/systems.html][tutorial]]).
