@@ -41,7 +41,7 @@ export function convertSeverity(severity: string): vscode.DiagnosticSeverity {
 
 export function convertPosition(doc: vscode.TextDocument, sexp: any): vscode.Position {
     if (sexp.children[0].source.toLowerCase() === ':position') {
-        return doc.positionAt(Number(sexp.children[1].source) - 1);
+        return doc.positionAt(Number(sexp.children[1].source));
     } else {
         return new vscode.Position(0,0);
     }
@@ -106,9 +106,7 @@ export function convertCompletionItem(sexp: any): vscode.CompletionItem {
     return new vscode.CompletionItem(text, kind);
 }
 
-export async function convertDefinition(sexp: any): Promise<vscode.Location | undefined> {
-    // we throw away the label because VSCode don't have it
-    const location = sexp.children[1];
+export async function convertLocation(location: any): Promise<vscode.Location | undefined> {
     const buffer = location.children[1];
     if (buffer.children[0].source.toLowerCase() === ':file') {
         const uri = vscode.Uri.file(util.from_lisp_string(buffer.children[1]));

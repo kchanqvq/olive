@@ -19,7 +19,7 @@ function parseSymbol(symbol: string, bufferPkg: string): [string, string] {
         return [symbol, canonicalizePackage(bufferPkg)];
     else if (colonPos === 0)
         return [symbol.slice(1), "KEYWORD"];
-    else if (colonPos + 1 < symbol.length && symbol[colonPos + 1] === ':')
+    else if (symbol[colonPos + 1] === ':')
         return [symbol.slice(colonPos + 2), symbol.slice(0, colonPos).toUpperCase()];
     else
         return [symbol.slice(colonPos + 1), symbol.slice(0, colonPos).toUpperCase()];

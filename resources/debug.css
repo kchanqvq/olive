@@ -2,7 +2,7 @@ body {
     font-family: var(--vscode-editor-font-family);
     background: var(--vscode-editor-background);
     color: var(--vscode-editor-foreground);
-    padding: 15px;
+    padding: 10px;
 }
 
 .debug-title {
@@ -15,7 +15,7 @@ body {
 
 .section-label {
     font-weight: bold;
-    margin: 10px 0;
+    margin: 4px 0;
 }
 
 .restarts-table {
@@ -25,7 +25,6 @@ body {
 
 .restarts-table tr {
     cursor: pointer;
-    border-radius: 3px;
 }
 
 .restarts-table tr:hover {
@@ -40,17 +39,75 @@ td { vertical-align: top; }
     padding-right: 1em;
 }
 
-.cmd {
+.restart-cmd {
     font-weight: bold;
     padding-right: 1em;
 }
 
+.frame-header {
+    cursor: pointer;
+    outline: none;
+    list-style: none;
+    display: flex;
+    align-items: flex-start;
+}
 
-.frame-item {
-    font-size: 0.9em;
-    padding: 2px 0;
+.frame-header::-webkit-details-marker {
+    display: none;
+}
+
+.frame-title {
+    flex: 1;
+    min-width: 0;
+    padding: 2px;
+    word-break: break-all;
+}
+
+.frame-container:not([open]) .frame-title {
     white-space: nowrap;
-    overflow: hidden;
     text-overflow: ellipsis;
-    opacity: 0.9;
+    overflow: hidden;
+}
+
+.frame-header:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+.frame-header .codicon {
+    font-size: 1em;
+    padding: 2px;
+    color: var(--vscode-icon-foreground);
+}
+
+.frame-header .codicon-chevron-right {
+    padding: 2px 0;
+}
+
+.frame-container[open] .frame-header .codicon-chevron-right {
+    transform: rotate(90deg);
+}
+
+.codicon:hover {
+    background: var(--vscode-toolbar-hoverBackground);
+}
+
+.frame-locals {
+    border-collapse: collapse;
+    margin-left: 1em;
+    color: var(--vscode-descriptionForeground);
+}
+
+.frame-locals::before {
+    color: var(--vscode-descriptionForeground);
+}
+
+.local-name {
+    font-weight: bold;
+    padding-right: 1em;
+    color: var(--vscode-editor-foreground);
+}
+
+.local {
+    padding: 2px;
+    word-break: break-all;
 }

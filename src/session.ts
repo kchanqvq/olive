@@ -6,7 +6,7 @@ import * as os from 'os';
 import { ReplView } from './replView';
 import { DebugView } from './debugView';
 import { plistGet, severityOrder, convertCompilerNote, searchBufferPackage, getSymbol, getLastExpression,
-    convertCompletionItem, convertDefinition, convertDescribeSymbol, convertIndentSpec } from './subr';
+    convertCompletionItem, convertLocation, convertDescribeSymbol, convertIndentSpec } from './subr';
 import * as indent from './indent';
 const { Client, util } = require('swank-client');
 const paredit = require('paredit.js');
@@ -538,7 +538,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         const cmd = `(SWANK:FIND-DEFINITIONS-FOR-EMACS ${util.to_lisp_string(symbol)})`
         const definitions = await this.client.rex(cmd, pkg, ':REPL-THREAD');
         if (definitions.type === 'list') {
-            const results = await Promise.all(definitions.children.map(convertDefinition));
+            const results = await Promise.all(definitions.children.map(
+                (def: any) => convertLocation(def.children[1])));
             return results.filter(Boolean);
         }
     }

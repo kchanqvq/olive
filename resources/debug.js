@@ -1,10 +1,12 @@
+import '@vscode/codicons/dist/codicon.css';
+import './debug.css';
 const vscode = acquireVsCodeApi();
 
 window.addEventListener('message', event => {
-    const message = event.data;
-    if (message.command === 'setData') {
-        render(message.info);
-        window.focus();
+    const m = event.data;
+    switch (m.command) {
+        case 'setData': render(m.info); window.focus(); break;
+        case 'frameLocals': renderFrameLocals(m.index, m.locals); break;
     }
 });
 
@@ -56,7 +58,7 @@ function render(info) {
         tr.appendChild(tdKbd);
 
         const cmd = document.createElement('span');
-        cmd.className = 'cmd';
+        cmd.className = 'restart-cmd';
         cmd.textContent = r.cmd;
 
         const tdDesc = document.createElement('td');
@@ -71,10 +73,86 @@ function render(info) {
     const framesEl = document.getElementById('frames');
     framesEl.innerHTML = '';
     info.stack_frames.forEach(f => {
-        const div = document.createElement('div');
-        div.className = 'frame-item';
-        div.textContent = `${f.frame_number}: ${f.description}`;
-        framesEl.appendChild(div);
+        const details = document.createElement('details');
+        details.className = 'frame-container';
+        details.id = `frame-${f.frame_number}`;
+
+        const summary = document.createElement('summary');
+        summary.className = 'frame-header';
+        
+        const icon = document.createElement('span');
+        icon.className = 'codicon codicon-chevron-right';
+        
+        const title = document.createElement('span');
+        title.className = 'frame-title';
+        title.textContent = f.description;
+
+        summary.append(icon, title);
+
+        if (f.restartable) {
+            const restartLink = document.createElement('div');
+            restartLink.className = 'codicon codicon-debug-restart action';
+            restartLink.title = 'Restart Frame';
+            restartLink.onclick = (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                vscode.postMessage({ command: 'restartFrame', index: f.frame_number });
+            };
+            summary.appendChild(restartLink);
+        }
+
+        const sourceLink = document.createElement('span');
+        sourceLink.className = 'codicon codicon-go-to-file action';
+        sourceLink.title = 'Go to Source';
+        sourceLink.onclick = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            vscode.postMessage({ command: 'goToSource', index: f.frame_number });
+        };
+        summary.appendChild(sourceLink);
+
+        const frameLocals = document.createElement('div');
+        frameLocals.className = 'frame-locals';
+        const dummy = document.createElement('div');
+        dummy.className = 'local';
+        dummy.textContent = 'Loading...'
+        frameLocals.appendChild(dummy);
+
+        details.ontoggle = () => {
+            if (details.open && !details.hasAttribute('data-loaded')) {
+                vscode.postMessage({ command: 'getFrameLocals', index: f.frame_number });
+            }
+        };
+
+        details.appendChild(summary);
+        details.appendChild(frameLocals);
+        framesEl.appendChild(details);
+    });
+}
+
+function renderFrameLocals(index, locals) {
+    const details = document.getElementById(`frame-${index}`);
+    details.setAttribute('data-loaded', 'true');
+
+    const frameLocals = details.querySelector(`.frame-locals`);
+    frameLocals.innerHTML = '';
+    if (locals.length === 0) {
+        const dummy = document.createElement('div');
+        dummy.className = 'local';
+        dummy.textContent = '(no locals)'
+        frameLocals.appendChild(dummy);
+    }
+
+    locals.forEach(l => {
+        const name = document.createElement('span');
+        name.className = 'local-name';
+        name.textContent = l.name;
+
+        const local = document.createElement('div');
+        local.className = 'local';
+        local.append(name, l.value);
+
+        frameLocals.appendChild(local);
     });
 }
 
