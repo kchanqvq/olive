@@ -1,6 +1,6 @@
 #+TITLE:OLIVE: Old-school LIsp Vscode Extension
 * REPL and Debugger
-The REPL is in the bottom panel. Multi-line input works, ~Enter~ sends the input when it's completed (all parenthesis are balanced). The sync button on the top right of the panel attempt to set current package and directory according to the opened file in the editor. If a debugger pop up saying the package does not exist, you probably haven't load the file or system yet -- read further.
+The REPL is in the bottom panel. Multi-line input works, ~Enter~ sends the input when it's completed (all parenthesis are balanced). Input history is accessed via =Alt+Up/Down=. The sync button on the top right of the panel attempt to set current package and directory according to the opened file in the editor. If a debugger pop up saying the package does not exist, you probably haven't load the file or system yet -- read further.
 
 You will quite often have the debugger popped up. ~ABORT~ is bound to key ~A~ and ~CONTINUE~ is bound to key ~C~, so you can press ~A~ to dismiss (abort) it. Number keys are also bound to restarts in order.
 

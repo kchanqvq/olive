@@ -5,6 +5,10 @@ const completionList = document.getElementById('completion-list');
 let currentInput = undefined, completions = [], selectedIndex = -1;
 let lastRequestId = 0, isReading = false;
 
+let history = [];
+let historyIndex = -1;
+let tempInput = '';
+
 // Default settings (will be overridden by VS Code)
 let settings = { minWordLength: 3, delay: 10 };
 
@@ -105,6 +109,8 @@ function createNewInput(pkg, readMode) {
     content.appendChild(line);
     currentInput.focus();
     content.scrollTop = content.scrollHeight;
+
+    historyIndex = -1;
 }
 
 function handleKeyDown(e) {
@@ -120,6 +126,10 @@ function handleKeyDown(e) {
         if (isReading || isBalanced(text)) {
             e.preventDefault();
             currentInput.disabled = true;
+            if (text.trim() && history[0] !== text) {
+                history.unshift(text);
+                if (history.length > 100) history.pop();
+            }
             vscode.postMessage({ command: isReading ? 'readSubmit' : 'eval', text });
         } else if (!isReading) {
             vscode.postMessage({ command: 'computeIndent',
@@ -128,6 +138,21 @@ function handleKeyDown(e) {
     } else if (e.key === 'Tab') {
         e.preventDefault();
         triggerAutocomplete(true); // Force on Tab
+    } else if (e.altKey && e.key === 'ArrowUp') {
+        if (historyIndex < history.length - 1) {
+            if (historyIndex === -1) tempInput = currentInput.value;
+            historyIndex++;
+            currentInput.value = history[historyIndex];
+            e.preventDefault();
+            handleOnInput();
+        }
+    } else if (e.altKey && e.key === 'ArrowDown') {
+        if (historyIndex > -1) {
+            historyIndex--;
+            currentInput.value = historyIndex === -1 ? tempInput : history[historyIndex];
+            e.preventDefault();
+            handleOnInput();
+        }
     }
 }
 
