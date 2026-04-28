@@ -28,10 +28,10 @@ function parseSymbol(symbol: string, bufferPkg: string): [string, string] {
 type NIndentSpec = number | string | NIndentSpec[];
 
 // Handle some top level special case for indent spec
-export function resolveSpec(op: string, bufferPkg: string, systemSpecs: Map<string, Map<string, IndentSpec>>): NIndentSpec {
+export function resolveSpec(op: string, bufferPkg: string, systemSpecs: Map<string, Map<string, IndentSpec>>): NIndentSpec | undefined {
     const [symbol, pkg] = parseSymbol(op, bufferPkg);
     let spec = systemSpecs.get(pkg)?.get(symbol) || defaultIndentSpecs[symbol];
-    if (spec === undefined) return 'nil';
+    if (!spec) return;
     if (typeof spec == 'number')
         spec = [...Array(spec).fill(4), '&body']
     if (spec == 'defun')
@@ -102,7 +102,14 @@ export function getSpecFromPath(text: string, path: any[], bufferPkg: string, sy
             const opName = op?.type === 'symbol' 
                 ? paredit.walk.source(text, op).toLowerCase()
                 : null;
-            spec = opName ? resolveSpec(opName, bufferPkg, systemSpecs) : 'nil';
+            if (opName) {
+                spec = resolveSpec(opName, bufferPkg, systemSpecs) ||
+                    (opName?.startsWith('do-')
+                        || opName?.startsWith('with-')
+                        || opName?.startsWith('without-')) && [0, '&lambda', '&rest', 2]
+                    || 'nil';
+            }
+            else spec = 'nil';
         }
         parent = node;
     }
