@@ -1,3 +1,5 @@
+import * as indent from '../src/indent';
+
 const vscode = acquireVsCodeApi();
 const content = document.getElementById('content');
 const completionList = document.getElementById('completion-list');
@@ -8,6 +10,9 @@ let lastRequestId = 0, isReading = false;
 let history = [];
 let historyIndex = -1;
 let tempInput = '';
+
+let currentPackage = 'COMMON-LISP-USER';
+let systemSpecs = new Map();
 
 // Default settings (will be overridden by VS Code)
 let settings = { minWordLength: 3, delay: 10 };
@@ -24,13 +29,22 @@ window.onmessage = e => {
     const m = e.data;
     switch (m.command) {
         case 'addOutput': appendOutput(m.text, m.type || 'output', m.throttle); break;
-        case 'prompt':    createNewInput(m.package, false); break;
-        case 'setPrompt': setLastPrompt(m.package); break;
+        case 'prompt':
+            currentPackage = m.package;
+            createNewInput(m.package, false);
+            break;
+        case 'setPrompt':
+            currentPackage = m.package;
+            setLastPrompt(m.package);
+            break;
         case 'read':      createNewInput('', true); break;
         case 'autocompleteResults': showCompletions(m.completions, m.requestId); break;
         case 'settings':  settings = m; break;
         case 'flush': flushOutput(); break;
         case 'indent': addIndent(m.value, m.offset, m.newline); break;
+        case 'syncSpecs':
+            systemSpecs = new Map(m.specs.map(([pkg, specs]) => [pkg, new Map(specs)]));
+            break;
         case 'disconnect':
             if (currentInput) currentInput.disabled = true;
             break;
@@ -132,8 +146,11 @@ function handleKeyDown(e) {
             }
             vscode.postMessage({ command: isReading ? 'readSubmit' : 'eval', text });
         } else if (!isReading) {
-            vscode.postMessage({ command: 'computeIndent',
-                text, offset: currentInput.selectionStart, newline: true});
+            e.preventDefault();
+            const offset = currentInput.selectionStart;
+            const value = indent.getExpectedIndent(text, offset, currentPackage, systemSpecs);
+            currentInput.setRangeText('\n' + ' '.repeat(value), offset, offset, 'end');
+            handleOnInput();
         }
     } else if (e.key === 'Tab') {
         e.preventDefault();

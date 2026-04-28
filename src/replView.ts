@@ -70,10 +70,12 @@ export class ReplView implements vscode.WebviewViewProvider {
         };
 
         const { webview } = webviewView;
-        const resUri = (p: string) => webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'resources', p));
+        const resUri = (p: string, dir: string = 'resources') =>
+            webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, dir, p));
+
         webviewView.webview.html = fs.readFileSync(resUri('repl.html').fsPath, 'utf8')
             .replace('{{cssUri}}', resUri('repl.css').toString())
-            .replace('{{jsUri}}', resUri('repl.js').toString())
+            .replace('{{jsUri}}', resUri('repl.js', 'out').toString())
             .replace(/{{cspSource}}/g, webview.cspSource);
 
         webviewView.webview.onDidReceiveMessage((m) => {
@@ -83,17 +85,20 @@ export class ReplView implements vscode.WebviewViewProvider {
                 case 'autocomplete': this.autocomplete(m.text, m.requestId); break;
                 case 'interrupt':    this.client?.interrupt(); break;
                 case 'unthrottle':   this.client?.socket.resume(); break;
-                case 'computeIndent':
-                    const {text, offset, newline} = m;
-                    const value = indent.getExpectedIndent(text, offset, this.currentPackage, this.systemSpecs)
-                    this.post('indent', {value: value, offset, newline});
-                    break;
                 case 'ready':        
                     this.sendSettings(); 
+                    this.sendSpecs();
                     this.readyResolve?.();
                     break;
             }
         });
+    }
+
+    public sendSpecs() {
+        const specs = Array.from(this.systemSpecs.entries()).map(([pkg, specMap]) => [
+            pkg, Array.from(specMap.entries())
+        ]);
+        this.post('syncSpecs', { specs });
     }
 
     private setupClientListeners() {
@@ -110,10 +115,6 @@ export class ReplView implements vscode.WebviewViewProvider {
             this.post('read');
             return new Promise<string>(r => this.readResolver = r);
         });
-
-        // REPL view no longer handles debug events directly
-        const events = ['presentation_start', 'presentation_end', 'debug_activate', 'read_from_minibuffer', 'y_or_n_p', 'read_aborted', 'profile_command_complete', 'compiler_notes'];
-        events.forEach(e => this.client.on(e, (...args: any[]) => console.log(`Swank event: ${e}`, ...args)));
     }
 
     public sendSettings() {

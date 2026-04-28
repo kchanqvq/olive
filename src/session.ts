@@ -261,7 +261,12 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                         specMap?.set(symbol, indentSpec);
                     }
                 }
+                this.replProvider.sendSpecs();
             });
+
+            const events = ['presentation_start', 'presentation_end', 'debug_activate', 'read_from_minibuffer', 'y_or_n_p', 'read_aborted', 'profile_command_complete'];
+            events.forEach(e => this.client.on(e, (...args: any[]) => console.log(`Swank event: ${e}`, ...args)));
+
             
             const info = await this.client.initialize();
 

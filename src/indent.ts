@@ -1,4 +1,4 @@
-const paredit = require('paredit.js');
+import * as paredit from 'paredit.js';
 
 export type IndentSpec = number | string | any[];
 
@@ -98,7 +98,7 @@ export function getSpecFromPath(text: string, path: any[], bufferPkg: string, sy
         if (Array.isArray(sub)) {
             spec = sub;
         } else {
-            const op = node.children[0];
+            const op = (node as any).children[0];
             const opName = op?.type === 'symbol' 
                 ? paredit.walk.source(text, op).toLowerCase()
                 : null;
@@ -141,7 +141,7 @@ export function getExpectedIndent(text: string, offset: number, bufferPkg: strin
 
     if (!node || !paredit.walk.hasChildren(node) || node.type === 'toplevel') return 0;
 
-    const children = node.children || [];
+    const children = (node as any).children || [];
     let childIdx = children.findIndex((c: any) => offset <= c.start);
     if (childIdx === -1) childIdx = children.length;
 
