@@ -189,14 +189,14 @@ export function getSymbol(doc: vscode.TextDocument, pos: vscode.Position): strin
     return range && doc.getText(range);
 }
 
-export function getLastExpression(doc: vscode.TextDocument, pos: vscode.Position, ast ?: any): vscode.Range | undefined {
+export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, direction: 'prev' | 'next', ast ?: any): vscode.Range | undefined {
     const text = doc.getText();
     const offset = doc.offsetAt(pos);
     if (!ast) ast = paredit.parse(text);
     const nodes = paredit.walk.sexpsAt(ast, offset);
     let node = nodes.filter((n: any) => n.type !== 'toplevel' && n.type !== 'list' && n.type !== 'error' && n.type !== 'comment').pop();
     if (!node) {
-        node = paredit.walk.prevSexp(ast, offset, (n: any) => n.type !== 'comment');
+        node = (direction === 'prev' ? paredit.walk.prevSexp : paredit.walk.nextSexp)(ast, offset, (n: any) => n.type !== 'comment');
     }
     if (node) {
         return new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));

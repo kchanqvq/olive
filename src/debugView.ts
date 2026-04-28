@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import { plistGet, convertLocation } from './subr';
+import { plistGet, convertLocation, getExpression } from './subr';
 const { util } = require('swank-client');
 
 export class DebugView {
@@ -62,9 +62,10 @@ export class DebugView {
                         if (location) {
                             const doc = await vscode.workspace.openTextDocument(location.uri);
                             await vscode.window.showTextDocument(doc, {
-                                selection: location.range,
+                                selection: getExpression(doc, location.range.start, 'next'),
                                 viewColumn: vscode.ViewColumn.One,
-                                preview: true
+                                preview: true,
+                                preserveFocus: true
                             });
                         }
                     }

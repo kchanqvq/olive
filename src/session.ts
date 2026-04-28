@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { ReplView } from './replView';
 import { DebugView } from './debugView';
-import { plistGet, severityOrder, convertCompilerNote, searchBufferPackage, getSymbol, getLastExpression,
+import { plistGet, severityOrder, convertCompilerNote, searchBufferPackage, getSymbol, getExpression,
     convertCompletionItem, convertLocation, convertDescribeSymbol, convertIndentSpec } from './subr';
 import * as indent from './indent';
 const { Client, util } = require('swank-client');
@@ -377,7 +377,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         if (!editor || !this.checkClient()) return;
 
         const doc = editor.document, pos = editor.selection.active;
-        const range = getLastExpression(doc, pos);
+        const range = getExpression(doc, pos, 'prev');
         if (!range) return;
 
         const pkg = searchBufferPackage(doc, pos);
