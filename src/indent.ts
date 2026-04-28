@@ -123,8 +123,8 @@ export function computeIndent(
     firstArgCol?: number
 ): number {
     const sub = getSubSpec(spec, childIdx);
-    if (Array.isArray(sub) && sub[0] === '&whole')
-        return parentStartCol + (sub[1] as number);
+    if (Array.isArray(sub) && sub[0] == '&whole' && typeof sub[1] == 'number')
+        return parentStartCol + sub[1];
     if (typeof sub == 'number') return parentStartCol + sub;
 
     // Default indentation
@@ -197,7 +197,8 @@ export const defaultIndentSpecs: Record<string, IndentSpec> = {
     'defpackage': [4, 2],
     'defstruct': [['&whole', 4, '&rest', ['&whole', 2, '&rest', 1]], '&rest', ['&whole', 2, '&rest', 1]],
     'destructuring-bind': ['&lambda', 4, '&body'],
-    'do': 'lisp-indent-do',
+    // 'do': 'lisp-indent-do',
+    'do': [['&whole', 'nil', '&rest', 'nil'], ['&whole', 'nil', '&rest', '1'], '&body'],
     'do*': ['as', 'do'],
     'dolist': [['&whole', 4, 2, 1], '&body'],
     'dotimes': ['as', 'dolist'],
