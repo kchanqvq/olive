@@ -8,6 +8,7 @@ export class DebugView {
     // Set to true by 'debug_return' event from swank-client.
     // Send abort onDidDispose only if isHandled is false
     public isHandled = false;
+    private decorationType?: vscode.TextEditorDecorationType;
 
     constructor(
         private context: vscode.ExtensionContext,
@@ -23,6 +24,7 @@ export class DebugView {
         });
 
         this.panel.onDidDispose(() => {
+            this.decorationType?.dispose();
             if(!this.isHandled)
                 this.client.debug_escape_all(this.info.thread);
         });
@@ -45,13 +47,15 @@ export class DebugView {
                     {
                         const res = await this.client.rex(`(SWANK:FRAME-LOCALS-AND-CATCH-TAGS ${m.index})`, 'COMMON-LISP-USER', this.info.thread);
                         const locals = util.from_lisp_bool(res.children[0]) ? res.children[0].children : [];
+                        const catchTags = util.from_lisp_bool(res.children[1]) ? res.children[1].children : [];
                         this.panel.webview.postMessage({
                             command: 'frameLocals',
                             index: m.index,
                             locals: locals.map((l: any) => ({
                                 name: util.from_lisp_string(plistGet(l, ':name')),
                                 value: util.from_lisp_string(plistGet(l, ':value'))
-                            }))
+                            })),
+                            catchTags: catchTags.map(util.from_lisp_string)
                         });
                     }
                     break;
@@ -61,12 +65,23 @@ export class DebugView {
                         const location = await convertLocation(res);
                         if (location) {
                             const doc = await vscode.workspace.openTextDocument(location.uri);
-                            await vscode.window.showTextDocument(doc, {
-                                selection: getExpression(doc, location.range.start, 'next'),
+                            const editor = await vscode.window.showTextDocument(doc, {
                                 viewColumn: vscode.ViewColumn.One,
                                 preview: true,
                                 preserveFocus: true
                             });
+
+                            const range = getExpression(doc, location.range.start, 'next');
+                            if (range) {
+                                this.decorationType?.dispose();
+                                this.decorationType = vscode.window.createTextEditorDecorationType({
+                                    backgroundColor: new vscode.ThemeColor('editor.stackFrameHighlightBackground'),
+                                });
+                                editor.setDecorations(this.decorationType, [range]);
+                                editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+                            }
+                        } else {
+                            vscode.window.showErrorMessage('Source location not available.')
                         }
                     }
                     break;
@@ -86,7 +101,7 @@ export class DebugView {
         this.panel.webview.html = html;
     }
 
-    public setup( info: any){
+    public setup(info: any) {
         this.panel.title = `Debugger: Level ${info.level}`
         this.info = info;
         this.panel.webview.postMessage({ command: 'setData', info: this.info });

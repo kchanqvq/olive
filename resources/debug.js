@@ -6,7 +6,7 @@ window.addEventListener('message', event => {
     const m = event.data;
     switch (m.command) {
         case 'setData': render(m.info); window.focus(); break;
-        case 'frameLocals': renderFrameLocals(m.index, m.locals); break;
+        case 'frameLocals': renderFrameLocals(m.index, m.locals, m.catchTags); break;
     }
 });
 
@@ -118,6 +118,9 @@ function render(info) {
         dummy.textContent = 'Loading...'
         frameLocals.appendChild(dummy);
 
+        const frameCatchTags = document.createElement('div');
+        frameCatchTags.className = 'frame-catch-tags';
+
         details.ontoggle = () => {
             if (details.open && !details.hasAttribute('data-loaded')) {
                 vscode.postMessage({ command: 'getFrameLocals', index: f.frame_number });
@@ -126,11 +129,12 @@ function render(info) {
 
         details.appendChild(summary);
         details.appendChild(frameLocals);
+        details.appendChild(frameCatchTags);
         framesEl.appendChild(details);
     });
 }
 
-function renderFrameLocals(index, locals) {
+function renderFrameLocals(index, locals, catchTags) {
     const details = document.getElementById(`frame-${index}`);
     details.setAttribute('data-loaded', 'true');
 
@@ -154,6 +158,14 @@ function renderFrameLocals(index, locals) {
 
         frameLocals.appendChild(local);
     });
+
+    const frameCatchTags = details.querySelector(`.frame-catch-tags`);
+    catchTags.forEach(t => {
+        const tag = document.createElement('span');
+        tag.className = 'catch-tag';
+        tag.textContent = t;
+        frameCatchTags.appendChild(tag);
+    })
 }
 
 // Notify that we are ready
