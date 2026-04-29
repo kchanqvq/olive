@@ -40,7 +40,7 @@ function render(info) {
         const tdKbd = document.createElement('td');
         tdKbd.className = 'restart-kbd';
 
-        if (r.cmd === '*ABORT' || r.cmd === 'ABORT' && !hasAbort){
+        if ((r.cmd === '*ABORT' || r.cmd === 'ABORT') && !hasAbort){
             const kbd = document.createElement('kbd');
             kbd.textContent = 'A';
             hasAbort = true;

@@ -41,9 +41,18 @@ export function convertSeverity(severity: string): vscode.DiagnosticSeverity {
 }
 
 export function convertPosition(doc: vscode.TextDocument, sexp: any): vscode.Position {
-    if (sexp.children[0].source.toLowerCase() === ':position') {
-        return doc.positionAt(Number(sexp.children[1].source));
+    const type = sexp.children[0].source.toLowerCase();
+    if (type === ':position') {
+        return doc.positionAt(Number(sexp.children[1].source) - 1);
+    } else if (type === ':offset') {
+        return doc.positionAt(Number(sexp.children[1].source) - 1 + Number(sexp.children[2].source));
+    } else if (type === ':line') {
+        return new vscode.Position(Number(sexp.children[1].source) - 1,
+            util.from_lisp_bool(sexp.children[2]) ? Number(sexp.children[2].source) - 1 : 0);
+    } else if (type === ':eof') {
+        return doc.lineAt(doc.lineCount - 1).range.end;
     } else {
+        console.log('convertPosition unimplemented: ', sexp);
         return new vscode.Position(0,0);
     }
 }
@@ -86,7 +95,7 @@ export function convertCompilerNote(doc: vscode.TextDocument, sexp: any): vscode
     const severity = convertSeverity(plistGet(sexp, ':severity').source.slice(1).toLowerCase());
     const position = convertPosition(doc, plistGet(sexp, ':location').children[2]);
     const lineEnd = doc.lineAt(position).range.end;
-    const textAfter = doc.getText(new vscode.Range(position,lineEnd));
+    const textAfter = doc.getText(new vscode.Range(position, lineEnd));
     const [sexpStart, sexpEnd] = sexpRange(textAfter);
     if (sexpEnd) {
         return new vscode.Diagnostic(new vscode.Range(position, position.translate(0, sexpEnd)),
@@ -190,18 +199,23 @@ export function getSymbol(doc: vscode.TextDocument, pos: vscode.Position): strin
     return range && doc.getText(range);
 }
 
-export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, direction: 'prev' | 'next', ast ?: any): vscode.Range | undefined {
-    const text = doc.getText();
+export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, direction: 'prev' | 'next', ast?: any): vscode.Range | undefined {
     const offset = doc.offsetAt(pos);
-    if (!ast) ast = paredit.parse(text);
+    if (!ast) ast = paredit.parse(doc.getText());
     const nodes = paredit.walk.sexpsAt(ast, offset);
     let node = nodes.filter((n: any) => n.type !== 'toplevel' && n.type !== 'list' && n.type !== 'error' && n.type !== 'comment').pop();
     if (!node) {
         node = (direction === 'prev' ? paredit.walk.prevSexp : paredit.walk.nextSexp)(ast, offset, (n: any) => n.type !== 'comment');
     }
-    if (node) {
-        return new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));
-    }
+    if (node) return new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));
+}
+
+export function getTopLevelForm(doc: vscode.TextDocument, pos: vscode.Position, ast?: any): vscode.Range | undefined {
+    const offset = doc.offsetAt(pos);
+    if (!ast) ast = paredit.parse(doc.getText());
+    const node = ast.children.find((child: any) => offset >= child.start && offset <= child.end)
+        || ast.children.findLast((child: any) => offset > child.end);
+    if (node) return new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));
 }
 
 export class OliveTextProvider implements vscode.TextDocumentContentProvider {

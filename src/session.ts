@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { ReplView } from './replView';
 import { DebugView } from './debugView';
-import { plistGet, severityOrder, convertCompilerNote, searchBufferPackage, getSymbol, getExpression,
+import { plistGet, severityOrder, convertCompilerNote, searchBufferPackage, getSymbol, getExpression, getTopLevelForm,
     convertCompletionItem, convertLocation, convertDescribeSymbol, convertIndentSpec } from './subr';
 import * as indent from './indent';
 const { Client, util } = require('swank-client');
@@ -54,7 +54,9 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evaluating', () => vscode.commands.executeCommand('olive.interrupt')));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.syncRepl', () => this.syncRepl()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileFile', () => this.compileFile()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileFileDebug', () => this.compileFile(":POLICY '((CL:DEBUG . 3))")));
+        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileFileDebug', () => this.compileFile("'((CL:DEBUG . 3))")));
+        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileDefun', () => this.compileDefun()));
+        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileDefunDebug', () => this.compileDefun("'((CL:DEBUG . 3))")));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evalLastExpression', () => this.evalLastExpression()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.loadWorkspaceSystem', () => this.loadWorkspaceSystem()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.indentLine', () => this.indentLine()));
@@ -295,7 +297,45 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         this.lispProcess?.kill();
     }
 
-    public async compileFile(options: string = '') {
+    private reportCompilationResult(doc: vscode.TextDocument, res: any) {
+        if (res.type === 'list') {
+            const success = util.from_lisp_bool(res.children[2]);
+            const duration = Number(res.children[3].source);
+
+            const msgParts = [success ? "Compilation finished" : "Compilation failed"];
+            if (util.from_lisp_bool(res.children[1])) {
+                const notes = res.children[1].children;
+                const noteCounts: Map<string, number> = new Map(severityOrder.map(s => [s, 0]));
+                for (const note of notes) {
+                    let severity = plistGet(note, ':severity').source.slice(1).toLowerCase();
+                    noteCounts.set(severity, (noteCounts.get(severity) || 0) + 1);
+                }
+
+                msgParts.push(": ");
+                for (const [severity, count] of noteCounts) {
+                    if (count > 0) {
+                        msgParts.push(`${count} ${severity}${count > 1 ? 's' : ''}  `);
+                    }
+                }
+
+                this.diagnostics.set(doc.uri,
+                    notes.map((n: any) => convertCompilerNote(doc, n)));
+
+            } else {
+                msgParts.push(". (No warnings)  ");
+                this.diagnostics.set(doc.uri, []);
+            }
+
+            msgParts.push(`[${duration.toFixed(2)} secs]`);
+
+            (success ? vscode.window.showInformationMessage : vscode.window.showErrorMessage)(
+                msgParts.join(""));
+        } else {
+            vscode.window.showErrorMessage(`Compilation failed: ${util.from_lisp_string(res)}`);
+        }
+    }
+
+    public async compileFile(policy: string = 'NIL') {
         if (!this.checkClient()) return;
 
         const editor = vscode.window.activeTextEditor;
@@ -306,60 +346,65 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
 
         const fileName = doc.fileName;
 
-        try {
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: `Compiling ${path.basename(fileName)}...`,
-                cancellable: false
-            }, async (progress) => {
-                const cmd = `(SWANK:COMPILE-FILE-FOR-EMACS ${util.to_lisp_string(fileName)} T ${options})`;
-                const res = await this.client.rex(cmd, 'COMMON-LISP-USER', 'T');
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: `Compiling ${path.basename(fileName)}...`,
+            cancellable: false
+        }, async (progress) => {
+            const cmd = `(SWANK:COMPILE-FILE-FOR-EMACS ${util.to_lisp_string(fileName)} T :POLICY ${policy})`;
+            const res = await this.client.rex(cmd, 'COMMON-LISP-USER', 'T');
+            this.reportCompilationResult(doc, res);
 
-                if (res.type === 'list') {
-                    const success = util.from_lisp_bool(res.children[2]);
-                    const duration = Number(res.children[3].source);
-                    const faslfile = util.from_lisp_bool(res.children[5]) && util.from_lisp_string(res.children[5]);
+            if (res.type === 'list') {
+                const success = util.from_lisp_bool(res.children[2]);
+                const faslfile = util.from_lisp_bool(res.children[5]) && util.from_lisp_string(res.children[5]);
 
-                    const msgParts = [success ? "Compilation finished" : "Compilation failed"];
-                    if (util.from_lisp_bool(res.children[1])) {
-                        const notes = res.children[1].children;
-                        const noteCounts: Map<string, number> = new Map(severityOrder.map(s => [s, 0]));
-                        for (const note of notes) {
-                            let severity = plistGet(note, ':severity').source.slice(1).toLowerCase();
-                            noteCounts.set(severity, (noteCounts.get(severity) || 0) + 1);
-                        }
+                if (faslfile &&
+                    (success ||
+                        await vscode.window.showInformationMessage('Compilation failed. Load fasl file anyway?',
+                            { modal: true }, 'Load') === 'Load'))
+                    this.client.rex(`(SWANK:LOAD-FILE ${util.to_lisp_string(faslfile)})`, 'COMMON-LISP-USER', 'T');
+            }
+        });
+    }
 
-                        msgParts.push(": ");
-                        for (const [severity, count] of noteCounts) {
-                            if (count > 0) {
-                                msgParts.push(`${count} ${severity}${count > 1 ? 's' : ''}  `);
-                            }
-                        }
+    public async compileRegion(doc: vscode.TextDocument, range: vscode.Range, policy: string = 'NIL') {
+        const fileName = doc.fileName;
+        const title = path.basename(fileName);
 
-                        this.diagnostics.set(doc.uri,
-                            notes.map((n: any) => convertCompilerNote(doc, n)));
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: `Compiling region in ${title}...`,
+            cancellable: false
+        }, async (progress) => {
+            const text = doc.getText(range);
+            const pos = `'((:POSITION ${doc.offsetAt(range.start) + 1}) (:LINE ${range.start.line + 1} ${range.start.character + 1}))`
+            // Since we pass DOC into convertCompilerNote eventually,
+            // it assumes everything is inside DOC and does not rely
+            // on BUFFER to resolve location, so we just pass TITLE
+            // for BUFFER instead of, say, URI.
 
-                    } else {
-                        msgParts.push(". (No warnings)  ");
-                        this.diagnostics.set(doc.uri, []);
-                    }
+            // There might be some namestring vs native-namestring
+            // quriks here.  I want to use UIOP:PARSE-NATIVE-NAMESTRING,
+            // but SBCL want only string, not pathnames.
+            const cmd = `(SWANK:COMPILE-STRING-FOR-EMACS
+${util.to_lisp_string(text)} ${util.to_lisp_string(title)} ${pos}
+${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
+            const res = await this.client.rex(cmd, 'COMMON-LISP-USER', 'T');
+            this.reportCompilationResult(doc, res);
+        });
+    }
 
-                    msgParts.push(`[${duration.toFixed(2)} secs]`);
+    public async compileDefun(policy: string = 'NIL') {
+        if (!this.checkClient()) return;
 
-                    (success ? vscode.window.showInformationMessage : vscode.window.showErrorMessage)(
-                        msgParts.join(""));
-                    if (faslfile &&
-                        (success ||
-                            await vscode.window.showInformationMessage('Compilation failed. Load fasl file anyway?',
-                                { modal: true }, 'Load') === 'Load'))
-                        this.client.rex(`(SWANK:LOAD-FILE ${util.to_lisp_string(faslfile)})`, 'COMMON-LISP-USER', 'T');
-                }
-                else
-                    vscode.window.showErrorMessage(`Compilation failed: ${util.from_lisp_string(res)}`);
-            });
-        } catch (err) {
-            vscode.window.showErrorMessage(`Compilation failed: ${err}`);
-        }
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return;
+
+        const doc = editor.document, pos = editor.selection.active;
+        const range = getTopLevelForm(doc, pos);
+        if (range) await this.compileRegion(doc, range, policy);
+        else vscode.window.showErrorMessage('No top level form at or before the selection.')
     }
 
     public async evalLastExpression() {
@@ -374,17 +419,13 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         const code = doc.getText(range);
 
         editor.setDecorations(evalDecorationType, []);
-        try {
-            const res = await this.client.rex(`(SWANK:INTERACTIVE-EVAL ${util.to_lisp_string(code)} 1 40)`, pkg, ':REPL-THREAD');
-            const resultStr = util.from_lisp_string(res);
-            const lineEnd = doc.lineAt(pos.line).range.end;
+        const res = await this.client.rex(`(SWANK:INTERACTIVE-EVAL ${util.to_lisp_string(code)} 1 40)`, pkg, ':REPL-THREAD');
+        const resultStr = util.from_lisp_string(res);
+        const lineEnd = doc.lineAt(pos.line).range.end;
 
-            editor.setDecorations(evalDecorationType, [{
-                range: new vscode.Range(lineEnd, lineEnd),
-                renderOptions: {after: {contentText: '; ' + resultStr}}}]);
-        } catch (err) {
-            vscode.window.showErrorMessage(`Evaluation failed: ${err}`);
-        }
+        editor.setDecorations(evalDecorationType, [{
+            range: new vscode.Range(lineEnd, lineEnd),
+            renderOptions: {after: {contentText: '; ' + resultStr}}}]);
     }
 
     public async loadWorkspaceSystem() {

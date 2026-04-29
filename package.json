@@ -107,8 +107,18 @@
       {
         "command": "olive.compileFileDebug",
         "category": "Olive",
-        "title": "Compile and load file for debug",
+        "title": "Compile and load file (high debug settings)",
         "icon": "$(debug-alt)"
+      },
+      {
+        "command": "olive.compileDefun",
+        "category": "Olive",
+        "title": "Compile top level form"
+      },
+      {
+        "command": "olive.compileDefunDebug",
+        "category": "Olive",
+        "title": "Compile top level form (high debug settings)"
       },
       {
         "command": "olive.evalLastExpression",
@@ -140,6 +150,18 @@
       {
         "command": "olive.compileFileDebug",
         "key": "shift+f5",
+        "when": "olive.activeLangId == common-lisp"
+      },
+      {
+        "command": "olive.compileDefun",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "olive.activeLangId == common-lisp"
+      },
+      {
+        "command": "olive.compileFileDebug",
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
         "when": "olive.activeLangId == common-lisp"
       },
       {
