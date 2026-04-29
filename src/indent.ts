@@ -1,3 +1,13 @@
+// Besides yet to implemented special indent functions, Potential
+// discrepancy with Emacs:
+
+// - We make outer indent spec take precedence of inner one, does
+// Emacs do the opposite? Because of our choice we don't need the
+// special case for tentative-defun
+
+// - Our heursitcs only recognize define-***. These are what is
+// recognized in syntax highlight rules (even in Emacs) anyway
+
 import * as paredit from 'paredit.js';
 
 export type IndentSpec = number | string | any[];
@@ -28,10 +38,16 @@ function parseSymbol(symbol: string, bufferPkg: string): [string, string] {
 type NIndentSpec = number | string | NIndentSpec[];
 
 // Handle some top level special case for indent spec
-export function resolveSpec(op: string, bufferPkg: string, systemSpecs: Map<string, Map<string, IndentSpec>>): NIndentSpec | undefined {
+export function resolveSpec(op: string, bufferPkg: string, systemSpecs: Map<string, Map<string, IndentSpec>>): NIndentSpec {
     const [symbol, pkg] = parseSymbol(op, bufferPkg);
     let spec = systemSpecs.get(pkg)?.get(symbol) || defaultIndentSpecs[symbol];
-    if (!spec) return;
+    if (spec === undefined) {
+        if (symbol.startsWith('do-') || symbol.startsWith('with-') || symbol.startsWith('without-'))
+            spec = ['&lambda', '&body'];
+        else if (symbol.startsWith('define'))
+            spec = 'defun';
+        else return 'nil';
+    }
     if (typeof spec === 'number')
         spec = [...Array(spec).fill(4), '&body']
     if (spec === 'defun')
@@ -103,11 +119,7 @@ export function getSpecFromPath(text: string, path: any[], bufferPkg: string, sy
                 ? paredit.walk.source(text, op).toLowerCase()
                 : null;
             if (opName) {
-                spec = resolveSpec(opName, bufferPkg, systemSpecs) ||
-                    (opName?.startsWith('do-')
-                        || opName?.startsWith('with-')
-                        || opName?.startsWith('without-')) && [0, '&lambda', '&rest', 2]
-                    || 'nil';
+                spec = resolveSpec(opName, bufferPkg, systemSpecs);
             }
             else spec = 'nil';
         }
