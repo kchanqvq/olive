@@ -59,6 +59,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileDefun', () => this.compileDefun()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileDefunDebug', () => this.compileDefun("'((CL:DEBUG . 3))")));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evalLastExpression', () => this.evalLastExpression()));
+        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evalDefun', () => this.evalDefun()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.loadWorkspaceSystem', () => this.loadWorkspaceSystem()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.indentLine', () => this.indentLine()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.newlineAndIndent', () => this.newlineAndIndent()));
@@ -266,9 +267,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             this.clientReady = true;
             this.statusConnected();
             this.replProvider.setClient(this.client, info);
-            // hack: reveal REPL view and return focus
             await vscode.commands.executeCommand('olive.replView.focus')
-            await vscode.commands.executeCommand('workbench.action.focusPreviousGroup');
+            // TODO: how to not steal focus???
         } catch (err) {
             this.statusDisconnected();
             vscode.window.showErrorMessage(`Failed to connect: ${err}`);
@@ -298,7 +298,9 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         this.lispProcess?.kill();
     }
 
-    private reportCompilationResult(doc: vscode.TextDocument, res: any) {
+    private reportCompilationResult(
+        doc: vscode.TextDocument, res: any, defaultPos = new vscode.Position(0,0)
+    ) {
         if (res.type === 'list') {
             const success = util.from_lisp_bool(res.children[2]);
             const duration = Number(res.children[3].source);
@@ -320,7 +322,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                 }
 
                 this.diagnostics.set(doc.uri,
-                    notes.map((n: any) => convertCompilerNote(doc, n)));
+                    notes.map((n: any) => convertCompilerNote(doc, n, defaultPos)));
 
             } else {
                 msgParts.push(". (No warnings)  ");
@@ -393,9 +395,10 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         })
     }
 
-    public async compileRegion(doc: vscode.TextDocument, range: vscode.Range, policy: string = 'NIL') {
+    async compileRegion(doc: vscode.TextDocument, range: vscode.Range, policy: string = 'NIL') {
         const fileName = doc.fileName;
         const title = path.basename(fileName);
+        const pkg = searchBufferPackage(doc, range.start);
 
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
@@ -415,8 +418,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             const cmd = `(SWANK:COMPILE-STRING-FOR-EMACS
 ${util.to_lisp_string(text)} ${util.to_lisp_string(title)} ${pos}
 ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
-            const res = await this.client.rex(cmd, 'COMMON-LISP-USER', 'T');
-            this.reportCompilationResult(doc, res);
+            const res = await this.client.rex(cmd, pkg, 'T');
+            this.reportCompilationResult(doc, res, range.start);
         });
     }
 
@@ -432,25 +435,41 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         else vscode.window.showErrorMessage('No top level form at or before the selection.')
     }
 
-    public async evalLastExpression() {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor || !this.checkClient()) return;
-
-        const doc = editor.document, pos = editor.selection.active;
-        const range = getExpression(doc, pos, 'prev');
-        if (!range) return;
-
-        const pkg = searchBufferPackage(doc, pos);
+    public async evalRegion(editor: vscode.TextEditor, range: vscode.Range) {
+        const doc = editor.document;
+        const pkg = searchBufferPackage(doc, range.start);
         const code = doc.getText(range);
 
         editor.setDecorations(evalDecorationType, []);
         const res = await this.client.rex(`(SWANK:INTERACTIVE-EVAL ${util.to_lisp_string(code)} 1 40)`, pkg, ':REPL-THREAD');
         const resultStr = util.from_lisp_string(res);
-        const lineEnd = doc.lineAt(pos.line).range.end;
+        const lineEnd = doc.lineAt(range.end.line).range.end;
 
         editor.setDecorations(evalDecorationType, [{
             range: new vscode.Range(lineEnd, lineEnd),
-            renderOptions: {after: {contentText: '; ' + resultStr}}}]);
+            renderOptions: { after: { contentText: '; ' + resultStr } }
+        }]);
+
+    }
+
+    public async evalLastExpression() {
+        if (!this.checkClient()) return;
+        const editor = vscode.window.activeTextEditor;
+
+        const doc = editor?.document, pos = editor?.selection.active;
+        const range = doc && pos && getExpression(doc, pos, 'prev');
+        if (range) await this.evalRegion(editor, range);
+        else vscode.window.showErrorMessage('No expression at or before the selection.')
+    }
+
+    public async evalDefun() {
+        if (!this.checkClient()) return;
+        const editor = vscode.window.activeTextEditor;
+
+        const doc = editor?.document, pos = editor?.selection.active;
+        const range = doc && pos && getTopLevelForm(doc, pos);
+        if (range) await this.evalRegion(editor, range);
+        else vscode.window.showErrorMessage('No expression at or before the selection.')
     }
 
     public async loadWorkspaceSystem() {

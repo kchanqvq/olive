@@ -40,7 +40,7 @@ export function convertSeverity(severity: string): vscode.DiagnosticSeverity {
     return vscode.DiagnosticSeverity.Information;
 }
 
-export function convertPosition(doc: vscode.TextDocument, sexp: any): vscode.Position {
+export function convertPosition(doc: vscode.TextDocument, sexp: any): vscode.Position | undefined {
     const type = sexp.children[0].source.toLowerCase();
     if (type === ':position') {
         return doc.positionAt(Number(sexp.children[1].source) - 1);
@@ -53,7 +53,6 @@ export function convertPosition(doc: vscode.TextDocument, sexp: any): vscode.Pos
         return doc.lineAt(doc.lineCount - 1).range.end;
     } else {
         console.log('convertPosition unimplemented: ', sexp);
-        return new vscode.Position(0,0);
     }
 }
 
@@ -90,10 +89,15 @@ function sexpRange(text: string): [number, number | undefined]{
     return [start, undefined];
 }
 
-export function convertCompilerNote(doc: vscode.TextDocument, sexp: any): vscode.Diagnostic {
+export function convertCompilerNote(
+    doc: vscode.TextDocument, sexp: any, defaultPos = new vscode.Position(0, 0)
+): vscode.Diagnostic {
     const message = util.from_lisp_string(plistGet(sexp, ':message'));
     const severity = convertSeverity(plistGet(sexp, ':severity').source.slice(1).toLowerCase());
-    const position = convertPosition(doc, plistGet(sexp, ':location').children[2]);
+    const location = plistGet(sexp, ':location');
+    // TODO: validate buffer (location.children[1]) matches doc
+    const position = location.children[2] && convertPosition(doc, location.children[2]) || defaultPos;
+
     const lineEnd = doc.lineAt(position).range.end;
     const textAfter = doc.getText(new vscode.Range(position, lineEnd));
     const [sexpStart, sexpEnd] = sexpRange(textAfter);
@@ -121,11 +125,11 @@ export async function convertLocation(location: any): Promise<vscode.Location | 
     if (buffer.children[0].source.toLowerCase() === ':file') {
         const uri = vscode.Uri.file(util.from_lisp_string(buffer.children[1]));
         const doc = await vscode.workspace.openTextDocument(uri);
-        return new vscode.Location(uri, convertPosition(doc, location.children[2]));
+        return new vscode.Location(uri, convertPosition(doc, location.children[2]) || new vscode.Position(0,0));
     } else if (buffer.children[0].source.toLowerCase() === ':buffer-and-file') {
         const uri = vscode.Uri.file(util.from_lisp_string(buffer.children[2]));
         const doc = await vscode.workspace.openTextDocument(uri);
-        return new vscode.Location(uri, convertPosition(doc, location.children[2]));
+        return new vscode.Location(uri, convertPosition(doc, location.children[2]) || new vscode.Position(0, 0));
     }
 }
 

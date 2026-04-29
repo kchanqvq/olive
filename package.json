@@ -132,6 +132,11 @@
         "title": "Evaluate last expression"
       },
       {
+        "command": "olive.evalDefun",
+        "category": "Olive",
+        "title": "Evaluate top level form"
+      },
+      {
         "command": "olive.loadWorkspaceSystem",
         "category": "Olive",
         "title": "Load ASDF system for current workspace",
@@ -182,6 +187,12 @@
         "when": "editorLangId == common-lisp"
       },
       {
+        "command": "olive.evalDefun",
+        "key": "ctrl+alt+enter",
+        "mac": "cmd+alt+enter",
+        "when": "editorLangId == common-lisp"
+      },
+      {
         "command": "olive.loadWorkspaceSystem",
         "key": "ctrl+shift+l",
         "mac": "cmd+shift+l"
@@ -229,22 +240,27 @@
         {
           "command": "olive.evalLastExpression",
           "when": "editorLangId == common-lisp",
-          "group": "olive@1"
+          "group": "1_olive@1"
         },
         {
           "command": "olive.compileDefun",
           "when": "editorLangId == common-lisp",
-          "group": "olive@2"
+          "group": "1_olive@2"
         },
         {
           "command": "olive.compileDefunDebug",
           "when": "editorLangId == common-lisp",
-          "group": "olive@3"
+          "group": "1_olive@3"
+        },
+        {
+          "command": "olive.evalDefun",
+          "when": "editorLangId == common-lisp",
+          "group": "1_olive@4"
         },
         {
           "command": "olive.syncRepl",
           "when": "editorLangId == common-lisp",
-          "group": "olive@4"
+          "group": "1_olive@5"
         }
       ],
       "view/title": [
