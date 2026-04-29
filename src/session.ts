@@ -47,28 +47,18 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             }
         }));
 
-        this.registerCommands();
-    }
-
-    private registerCommands() {
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.connect', () => this.connect()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.startLisp', () => this.startLisp()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.disconnect', () => this.disconnect()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.interrupt', () => this.interrupt()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evaluating', () => vscode.commands.executeCommand('olive.interrupt')));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.clearRepl', () => this.replProvider.clear()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.syncRepl', () => this.syncRepl()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.setReplPackage', () => this.replProvider.setPackage()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileFile', () => this.compileFile()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileFileDebug', () => this.compileFile(":POLICY '((CL:DEBUG . 3))")));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evalLastExpression', () => this.evalLastExpression()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.loadWorkspaceSystem', () => this.loadWorkspaceSystem()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.indentLine', () => this.indentLine()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.newlineAndIndent', () => this.newlineAndIndent()));
-
-        this.ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('editor')) this.replProvider.sendSettings();
-        }));
     }
 
     private checkClient() {
@@ -261,7 +251,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                         specMap?.set(symbol, indentSpec);
                     }
                 }
-                this.replProvider.sendSpecs();
+                this.replProvider.sendSystemSpecs();
             });
 
             const events = ['presentation_start', 'presentation_end', 'debug_activate', 'read_from_minibuffer', 'y_or_n_p', 'read_aborted', 'profile_command_complete'];

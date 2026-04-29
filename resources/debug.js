@@ -119,7 +119,7 @@ function render(info) {
             vscode.postMessage({ command: 'disassemble', index: f.frame_number });
         };
 
-        summary.appendChild(disassembleLink, sourceLink);
+        summary.append(disassembleLink, sourceLink);
 
         const frameLocals = document.createElement('div');
         frameLocals.className = 'frame-locals';

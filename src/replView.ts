@@ -16,6 +16,12 @@ export class ReplView implements vscode.WebviewViewProvider {
     constructor(private context: vscode.ExtensionContext,
         private systemSpecs: Map<string, Map<string, indent.IndentSpec>>) {
         this.readyPromise = new Promise(resolve => this.readyResolve = resolve);
+
+        context.subscriptions.push(vscode.commands.registerCommand('olive.clearRepl', () => this.clear()));
+        context.subscriptions.push(vscode.commands.registerCommand('olive.setReplPackage', () => this.setPackage()));
+        context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('editor')) this.sendSettings();
+        }));
     }
 
     public setClient(client: any, info: any) {
@@ -24,7 +30,19 @@ export class ReplView implements vscode.WebviewViewProvider {
             this.currentPackage = util.from_lisp_string(info.children[0]);
             this.currentNickname = util.from_lisp_string(info.children[1]);
 
-            this.setupClientListeners();
+            this.client.on('print_string', (s: string, t: string) => {
+                this.client.socket.pause();
+                this.post('addOutput', { text: s, type: t, throttle: t });
+            });
+            this.client.on('new_package', (p: string, n: string) => {
+                this.currentPackage = p;
+                this.currentNickname = n;
+                this.post('setPrompt', { package: this.currentNickname });
+            });
+            this.client.on('read_string', () => {
+                this.post('read');
+                return new Promise<string>(r => this.readResolver = r);
+            });
 
             const encouragements = [
                 "Let the hacking commence!",
@@ -87,34 +105,18 @@ export class ReplView implements vscode.WebviewViewProvider {
                 case 'unthrottle':   this.client?.socket.resume(); break;
                 case 'ready':        
                     this.sendSettings(); 
-                    this.sendSpecs();
+                    this.sendSystemSpecs();
                     this.readyResolve?.();
                     break;
             }
         });
     }
 
-    public sendSpecs() {
+    public sendSystemSpecs() {
         const specs = Array.from(this.systemSpecs.entries()).map(([pkg, specMap]) => [
             pkg, Array.from(specMap.entries())
         ]);
         this.post('syncSpecs', { specs });
-    }
-
-    private setupClientListeners() {
-        this.client.on('print_string', (s: string, t: string) => {
-            this.client.socket.pause();
-            this.post('addOutput', { text: s, type: t, throttle: t });
-        });
-        this.client.on('new_package', (p: string, n: string) => {
-            this.currentPackage = p;
-            this.currentNickname = n;
-            this.post('setPrompt', { package: this.currentNickname });
-        });
-        this.client.on('read_string', () => {
-            this.post('read');
-            return new Promise<string>(r => this.readResolver = r);
-        });
     }
 
     public sendSettings() {
