@@ -545,19 +545,19 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         const symbol = getSymbol(doc, pos);
         if (!symbol) return;
         const pkg = searchBufferPackage(doc, pos);
-        if (vscode.workspace.getConfiguration('olive').get('completionStyle') === 'fuzzy') {
-            const cmd = `(SWANK:FUZZY-COMPLETIONS ${util.to_lisp_string(symbol)} ${util.to_lisp_string(pkg)})`;
-            const res = await this.client.rex(cmd, pkg, ':REPL-THREAD');
-            if (res.type === 'list'){
-                const [completions, incomplete] = res.children;
-                return new vscode.CompletionList(completions.children.map(convertCompletionItem),
-                    util.from_lisp_bool(incomplete));
-            }
-        } else {
-            const cmd = `(SWANK:SIMPLE-COMPLETIONS ${util.to_lisp_string(symbol)} ${util.to_lisp_string(pkg)})`;
-            const res = await this.client.rex(cmd, pkg, ':REPL-THREAD');
-            return res.children.map(convertCompletionItem);
-        }
+        const style = vscode.workspace.getConfiguration('olive').get('completionStyle');
+        const cmd = (style === 'fuzzy') ?
+            `(SWANK:FUZZY-COMPLETIONS ${util.to_lisp_string(symbol)} ${util.to_lisp_string(pkg)})` :
+            `(SWANK:SIMPLE-COMPLETIONS ${util.to_lisp_string(symbol)} ${util.to_lisp_string(pkg)})`;
+        const res = await this.client.rex(cmd, pkg, ':REPL-THREAD');
+        const completions = (style === 'fuzzy') ? res.children[0] : res;
+        // Pass isComplete = true to force VSCode to always query
+        // SLIME. This is because both SLIME and VS Code try to be
+        // smart and result in glitch. In particular, SLIME try to
+        // guess symbol case, and the case of returned completions can
+        // change when more input is typed; VS Code cache these
+        // completions which may become stale.
+        return new vscode.CompletionList(completions.children.map(convertCompletionItem), true);
     }
 
     async provideHover(doc: vscode.TextDocument, pos: vscode.Position) {

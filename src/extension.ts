@@ -19,7 +19,7 @@ export function activate(ctx: vscode.ExtensionContext) {
             { webviewOptions: { retainContextWhenHidden: true } })
     );
 
-    const selector: vscode.DocumentSelector = { scheme: 'file', language: 'common-lisp' };
+    const selector: vscode.DocumentSelector = { language: 'common-lisp' };
     ctx.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, session, ':', '*', '+'));
     ctx.subscriptions.push(vscode.languages.registerHoverProvider(selector, session));
     ctx.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, session));
