@@ -454,13 +454,15 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
     }
 
     public async loadWorkspaceSystem() {
+        if (!this.checkClient()) return;
+
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (!workspaceRoot) {
             vscode.window.showErrorMessage('Cannot find workspace root directory.');
             return;
         }
 
-        const asdFiles = await vscode.workspace.findFiles('**/*.asd', '**/node_modules/**');
+        const asdFiles = await vscode.workspace.findFiles('*.asd');
         if (asdFiles.length === 0) {
             vscode.window.showErrorMessage('No .asd file found in workspace root directory.')
             return;

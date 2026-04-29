@@ -210,6 +210,7 @@ export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, di
     if (node) return new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));
 }
 
+// Before or surrounding POS
 export function getTopLevelForm(doc: vscode.TextDocument, pos: vscode.Position, ast?: any): vscode.Range | undefined {
     const offset = doc.offsetAt(pos);
     if (!ast) ast = paredit.parse(doc.getText());

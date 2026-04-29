@@ -134,7 +134,8 @@
       {
         "command": "olive.loadWorkspaceSystem",
         "category": "Olive",
-        "title": "Load ASDF system for current workspace"
+        "title": "Load ASDF system for current workspace",
+        "icon": "$(run)"
       },
       {
         "command": "olive.indentLine",
@@ -224,11 +225,33 @@
       }
     },
     "menus": {
+      "editor/context": [
+        {
+          "command": "olive.evalLastExpression",
+          "when": "editorLangId == common-lisp",
+          "group": "olive@1"
+        },
+        {
+          "command": "olive.compileDefun",
+          "when": "editorLangId == common-lisp",
+          "group": "olive@2"
+        },
+        {
+          "command": "olive.compileDefunDebug",
+          "when": "editorLangId == common-lisp",
+          "group": "olive@3"
+        },
+        {
+          "command": "olive.syncRepl",
+          "when": "editorLangId == common-lisp",
+          "group": "olive@4"
+        }
+      ],
       "view/title": [
         {
           "command": "olive.evaluating",
           "when": "view == olive.replView && olive.isEvaluating",
-          "group": "navigation"
+          "group": "navigation@0"
         },
         {
           "command": "olive.syncRepl",
@@ -244,6 +267,28 @@
           "command": "olive.clearRepl",
           "when": "view == olive.replView",
           "group": "navigation@3"
+        },
+        {
+          "command": "olive.loadWorkspaceSystem",
+          "when": "view == workbench.explorer.fileView",
+          "group": "navigation"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "olive.syncRepl",
+          "when": "webviewId == 'olive.replView'",
+          "group": "olive@1"
+        },
+        {
+          "command": "olive.setReplPackage",
+          "when": "webviewId == 'olive.replView'",
+          "group": "olive@2"
+        },
+        {
+          "command": "olive.clearRepl",
+          "when": "webviewId == 'olive.replView'",
+          "group": "olive@3"
         }
       ],
       "editor/title/run": [
