@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ReplView } from './replView';
 import { LispSession } from './session';
+import { OliveTextProvider } from './subr';
 
 let session: LispSession;
 
@@ -8,6 +9,10 @@ export function activate(ctx: vscode.ExtensionContext) {
     const systemSpecs = new Map();
     const replProvider = new ReplView(ctx, systemSpecs);
     session = new LispSession(ctx, replProvider, systemSpecs);
+
+    ctx.subscriptions.push(
+        vscode.workspace.registerTextDocumentContentProvider(OliveTextProvider.scheme, OliveTextProvider.getInstance())
+    );
 
     ctx.subscriptions.push(
         vscode.window.registerWebviewViewProvider(ReplView.viewType, replProvider,

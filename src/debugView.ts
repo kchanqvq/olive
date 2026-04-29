@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import { plistGet, convertLocation, getExpression } from './subr';
+import * as crypto from 'crypto';
+import { plistGet, convertLocation, getExpression, OliveTextProvider } from './subr';
 const { util } = require('swank-client');
 
 export class DebugView {
@@ -88,6 +89,9 @@ export class DebugView {
                 case 'restartFrame':
                     await this.client.rex(`(SWANK:RESTART-FRAME ${m.index})`, 'COMMON-LISP-USER', this.info.thread);
                     break;
+                case 'disassemble':
+                    await this.showDisassembly(m.index);
+                    break;
             }
         });
 
@@ -105,5 +109,14 @@ export class DebugView {
         this.panel.title = `Debugger: Level ${info.level}`
         this.info = info;
         this.panel.webview.postMessage({ command: 'setData', info: this.info });
+    }
+
+    async showDisassembly(index: number) {
+        const res = await this.client.rex(`(SWANK:SLDB-DISASSEMBLE ${index})`, 'COMMON-LISP-USER', this.info.thread);
+        const content = util.from_lisp_string(res);
+        const title = `Disassembly Frame ${index} (Thread ${this.info.thread})`;
+        const uri = OliveTextProvider.getInstance().set(content, title);
+        const doc = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preview: true });
     }
 }

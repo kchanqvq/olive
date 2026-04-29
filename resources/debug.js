@@ -109,7 +109,17 @@ function render(info) {
             e.preventDefault();
             vscode.postMessage({ command: 'goToSource', index: f.frame_number });
         };
-        summary.appendChild(sourceLink);
+
+        const disassembleLink = document.createElement('span');
+        disassembleLink.className = 'codicon codicon-file-binary action';
+        disassembleLink.title = 'Disassemble Frame';
+        disassembleLink.onclick = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            vscode.postMessage({ command: 'disassemble', index: f.frame_number });
+        };
+
+        summary.appendChild(disassembleLink, sourceLink);
 
         const frameLocals = document.createElement('div');
         frameLocals.className = 'frame-locals';

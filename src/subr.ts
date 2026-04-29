@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as crypto from 'crypto';
 import {IndentSpec} from './indent'
 const { util } = require('swank-client');
 const paredit = require('paredit.js');
@@ -200,5 +201,40 @@ export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, di
     }
     if (node) {
         return new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));
+    }
+}
+
+export class OliveTextProvider implements vscode.TextDocumentContentProvider {
+    static scheme = 'olive-text';
+    private static instance: OliveTextProvider;
+    private contents = new Map<string, string>();
+
+    private constructor() {
+        vscode.workspace.onDidCloseTextDocument(doc => {
+            if (doc.uri.scheme === OliveTextProvider.scheme) {
+                this.contents.delete(doc.uri.toString());
+            }
+        });
+    }
+
+    public static getInstance(): OliveTextProvider {
+        if (!OliveTextProvider.instance) {
+            OliveTextProvider.instance = new OliveTextProvider();
+        }
+        return OliveTextProvider.instance;
+    }
+
+    provideTextDocumentContent(uri: vscode.Uri): string | undefined {
+        return this.contents.get(uri.toString());
+    }
+
+    set(content: string, title: string): vscode.Uri {
+        const uuid = crypto.randomUUID();
+        const uri = vscode.Uri.from({
+            scheme: OliveTextProvider.scheme,
+            path: `/${uuid}/${title}`
+        });
+        this.contents.set(uri.toString(), content);
+        return uri;
     }
 }
