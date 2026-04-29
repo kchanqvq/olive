@@ -131,7 +131,7 @@ function handleKeyDown(e) {
     if (completionList.style.display === 'flex') {
         if (e.key === 'ArrowDown') return e.preventDefault(), selectedIndex = (selectedIndex + 1) % completions.length, updateSelection();
         if (e.key === 'ArrowUp')   return e.preventDefault(), selectedIndex = (selectedIndex - 1 + completions.length) % completions.length, updateSelection();
-        if (e.key === 'Enter' || e.key === 'Tab') return e.preventDefault(), applyCompletion(completions[selectedIndex]);
+        if (e.key === 'Enter' || e.key === 'Tab') return e.preventDefault(), applyCompletion(completions[selectedIndex].text);
         if (e.key === 'Escape')    return hideCompletions();
     }
 
@@ -201,8 +201,19 @@ function showCompletions(items, reqId) {
     items.forEach((it, i) => {
         const d = document.createElement('div');
         d.className = 'item';
-        d.textContent = it;
-        d.onclick = () => applyCompletion(it);
+
+        let last = 0;
+        (it.matches || []).forEach(m => {
+            d.appendChild(document.createTextNode(it.text.slice(last, m.start)));
+            const s = document.createElement('span');
+            s.className = 'match';
+            s.textContent = it.text.slice(m.start, m.start + m.length);
+            d.appendChild(s);
+            last = m.start + m.length;
+        });
+        d.appendChild(document.createTextNode(it.text.slice(last)));
+
+        d.onclick = () => applyCompletion(it.text);
         completionList.appendChild(d);
     });
 

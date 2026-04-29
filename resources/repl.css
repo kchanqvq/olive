@@ -57,3 +57,4 @@ body {
 
 .item { padding: 4px 8px; cursor: pointer; }
 .item.selected { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+.match { font-weight: bold; color: var(--vscode-list-highlightForeground); }

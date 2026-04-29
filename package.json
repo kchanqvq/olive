@@ -180,6 +180,13 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically start Lisp when the extension activates."
+        },
+        "olive.completionStyle": {
+          "type": "string",
+          "default": "fuzzy",
+          "enum": ["simple", "fuzzy"],
+          "description": "Completion matching style",
+          "enumDescriptions": ["Simple prefix matching", "Fuzzy matching"]
         }
       }
     },

@@ -147,10 +147,23 @@ export class ReplView implements vscode.WebviewViewProvider {
     private async autocomplete(text: string, requestId: string) {
         if (!this.client) return;
         try {
-            const cmd = `(SWANK:SIMPLE-COMPLETIONS ${util.to_lisp_string(text)} ${util.to_lisp_string(this.currentPackage)})`;
-            const res = await this.client.rex(cmd, this.currentPackage, ':REPL-THREAD');
-            const completions = res.children.map((c: any) => util.from_lisp_string(c.children[0]));
-            this.post('autocompleteResults', { completions, requestId });
+            if (vscode.workspace.getConfiguration('olive').get('completionStyle') === 'fuzzy') {
+                const cmd = `(SWANK:FUZZY-COMPLETIONS ${util.to_lisp_string(text)} ${util.to_lisp_string(this.currentPackage)})`;
+                const res = await this.client.rex(cmd, this.currentPackage, ':REPL-THREAD');
+                const completions = res.children[0].children.map((c: any) => ({
+                    text: util.from_lisp_string(c.children[0]),
+                    matches: c.children[3].children.map((r: any) => ({
+                        start: Number(r.children[0].source),
+                        length:  util.from_lisp_string(r.children[1]).length}))}));
+                this.post('autocompleteResults', { completions, requestId });
+            } else {
+                const cmd = `(SWANK:SIMPLE-COMPLETIONS ${util.to_lisp_string(text)} ${util.to_lisp_string(this.currentPackage)})`;
+                const res = await this.client.rex(cmd, this.currentPackage, ':REPL-THREAD');
+                const completions = res.children.map((c: any) => ({
+                    text: util.from_lisp_string(c.children[0]),
+                    matches: [{ start: 0, length: text.length }]}));
+                this.post('autocompleteResults', { completions, requestId });
+            }
         } catch {
             this.post('autocompleteResults', { completions: [], requestId });
         }

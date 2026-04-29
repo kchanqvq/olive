@@ -504,9 +504,19 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         const symbol = getSymbol(doc, pos);
         if (!symbol) return;
         const pkg = searchBufferPackage(doc, pos);
-        const cmd = `(SWANK:SIMPLE-COMPLETIONS ${util.to_lisp_string(symbol)} ${util.to_lisp_string(pkg)})`;
-        const res = await this.client.rex(cmd, pkg, ':REPL-THREAD');
-        return res.children.map(convertCompletionItem);
+        if (vscode.workspace.getConfiguration('olive').get('completionStyle') === 'fuzzy') {
+            const cmd = `(SWANK:FUZZY-COMPLETIONS ${util.to_lisp_string(symbol)} ${util.to_lisp_string(pkg)})`;
+            const res = await this.client.rex(cmd, pkg, ':REPL-THREAD');
+            if (res.type === 'list'){
+                const [completions, incomplete] = res.children;
+                return new vscode.CompletionList(completions.children.map(convertCompletionItem),
+                    util.from_lisp_bool(incomplete));
+            }
+        } else {
+            const cmd = `(SWANK:SIMPLE-COMPLETIONS ${util.to_lisp_string(symbol)} ${util.to_lisp_string(pkg)})`;
+            const res = await this.client.rex(cmd, pkg, ':REPL-THREAD');
+            return res.children.map(convertCompletionItem);
+        }
     }
 
     async provideHover(doc: vscode.TextDocument, pos: vscode.Position) {
