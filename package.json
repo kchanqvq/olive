@@ -107,8 +107,14 @@
       {
         "command": "olive.compileFileDebug",
         "category": "Olive",
-        "title": "Compile and load file (high debug settings)",
+        "title": "Compile and load file (debug)",
         "icon": "$(debug-alt)"
+      },
+      {
+        "command": "olive.loadFile",
+        "category": "Olive",
+        "title": "Load file",
+        "icon": "$(file-text)"
       },
       {
         "command": "olive.compileDefun",
@@ -118,7 +124,7 @@
       {
         "command": "olive.compileDefunDebug",
         "category": "Olive",
-        "title": "Compile top level form (high debug settings)"
+        "title": "Compile top level form (debug)"
       },
       {
         "command": "olive.evalLastExpression",
@@ -153,13 +159,18 @@
         "when": "olive.activeLangId == common-lisp"
       },
       {
+        "command": "olive.loadFile",
+        "key": "alt+f5",
+        "when": "olive.activeLangId == common-lisp"
+      },
+      {
         "command": "olive.compileDefun",
         "key": "ctrl+enter",
         "mac": "cmd+enter",
         "when": "olive.activeLangId == common-lisp"
       },
       {
-        "command": "olive.compileFileDebug",
+        "command": "olive.compileDefunDebug",
         "key": "ctrl+shift+enter",
         "mac": "cmd+shift+enter",
         "when": "olive.activeLangId == common-lisp"
@@ -235,16 +246,21 @@
           "group": "navigation@3"
         }
       ],
-      "editor/title": [
+      "editor/title/run": [
         {
           "command": "olive.compileFile",
           "when": "editorLangId == common-lisp",
-          "group": "navigation"
+          "group": "1_run"
         },
         {
           "command": "olive.compileFileDebug",
           "when": "editorLangId == common-lisp",
-          "group": "navigation"
+          "group": "1_run"
+        },
+        {
+          "command": "olive.loadFile",
+          "when": "editorLangId == common-lisp",
+          "group": "1_run"
         }
       ]
     }

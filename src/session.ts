@@ -55,6 +55,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.syncRepl', () => this.syncRepl()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileFile', () => this.compileFile()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileFileDebug', () => this.compileFile("'((CL:DEBUG . 3))")));
+        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.loadFile', () => this.loadFile()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileDefun', () => this.compileDefun()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileDefunDebug', () => this.compileDefun("'((CL:DEBUG . 3))")));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evalLastExpression', () => this.evalLastExpression()));
@@ -351,7 +352,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             title: `Compiling ${path.basename(fileName)}...`,
             cancellable: false
         }, async (progress) => {
-            const cmd = `(SWANK:COMPILE-FILE-FOR-EMACS ${util.to_lisp_string(fileName)} T :POLICY ${policy})`;
+            const cmd = `(SWANK:COMPILE-FILE-FOR-EMACS
+(UIOP:PARSE-NATIVE-NAMESTRING ${util.to_lisp_string(fileName)}) T :POLICY ${policy})`;
             const res = await this.client.rex(cmd, 'COMMON-LISP-USER', 'T');
             this.reportCompilationResult(doc, res);
 
@@ -366,6 +368,29 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                     this.client.rex(`(SWANK:LOAD-FILE ${util.to_lisp_string(faslfile)})`, 'COMMON-LISP-USER', 'T');
             }
         });
+    }
+
+    public async loadFile() {
+        if (!this.checkClient()) return;
+
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return;
+
+        const doc = editor.document;
+        if (doc.isDirty) await doc.save();
+
+        const fileName = doc.fileName;
+
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: `Loading ${path.basename(fileName)}...`,
+            cancellable: false
+        }, async (progress) => {
+            const cmd = `(SWANK:LOAD-FILE
+(UIOP:PARSE-NATIVE-NAMESTRING ${util.to_lisp_string(fileName)}))`;
+            await this.client.rex(cmd, 'COMMON-LISP-USER', 'T');
+            vscode.window.showInformationMessage('Load finished.');
+        })
     }
 
     public async compileRegion(doc: vscode.TextDocument, range: vscode.Range, policy: string = 'NIL') {

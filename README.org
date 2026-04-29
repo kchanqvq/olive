@@ -8,10 +8,12 @@ You will quite often have the debugger popped up. ~ABORT~ is bound to key ~A~ an
 
 ~Ctrl/Cmd+Shift+R~ starts a new Lisp process, or restarts it if one is already running. Clicking the "Olive" status bar item has the same effect. Use it in case the state of your Lisp image stops making sense. Be aware you need to load your files/systems into the freshly restarted process again to resume working on them.
 * Loading Files and Systems
-The play button (also key ~F5~) on the top right of the editor window compiles and loads the current file. This compiles with default settings, which has good performance and is already debuggable. However, if you hate some compiler optimizations (variable elimination, stack frame elision...), you can click the play button /with bug/ (also key ~Shift+F5~) to compile and load with high debug settings.
+The play button (also key ~F5~) on the top right of the editor window compiles and loads the current file. This compiles with default settings, which has good performance and is already debuggable. More option are available in the drop down menu next to it: High debug settings (also key ~Shift+F5~), if you hate some compiler optimizations (variable elimination, stack frame elision...); Load directly (also key ~Alt+F5~), this one is equivalent to entering forms in the file into REPL one by one, generally more useful for scripting.
 
 [[demo/file.gif]]
 
-=Shift+Enter= evaluates the expression before it and display the result. =Ctrl/Cmd+Enter= compiles the current top-level form (i.e. surrounding or before the cursor). This is particularly useful for defining functions one by one. =Ctrl/Cmd+Shift+Enter= compiles the current top-level form with high debug settings.
+=Shift+Enter= evaluates the expression before it and display the result.
+
+=Ctrl/Cmd+Enter= compiles the current top-level form (i.e. surrounding or before the cursor). This is particularly useful for defining functions one by one. =Ctrl/Cmd+Shift+Enter= compiles the current top-level form with high debug settings.
 
 Most Lisp projects use the [[https://asdf.common-lisp.dev/][ASDF]] build system. ~Ctrl/Cmd+Shift+L~ tries to find a system definition (~.asd~) file under workspace root and load the system. This is handy for loading or reloading all Lisp files in your project and dependencies, after you wrote a working ~.asd~ file ([[https://lispcookbook.github.io/cl-cookbook/systems.html][tutorial]]).
