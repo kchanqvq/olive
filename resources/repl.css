@@ -34,6 +34,7 @@ body {
     resize: none;
     padding: 0;
     display: block;
+    color: var(--vscode-editor-foreground);
 }
 .input:disabled { color: inherit; pointer-events: none; }
 
