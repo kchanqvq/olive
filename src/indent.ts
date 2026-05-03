@@ -91,80 +91,46 @@ export function getColumn(text: string, offset: number): number {
     return offset - (lastNewline + 1);
 }
 
-export function getLine(text: string, offset: number): number {
-    let line = 0, pos = 0;
-    while (true) {
-        const next = text.indexOf('\n', pos);
-        if (next === -1 || next >= offset) break;
-        line++;
-        pos = next + 1;
-    }
-    return line;
-}
-
-export function getSpecFromPath(text: string, path: any[], bufferPkg: string, systemSpecs: Map<string, Map<string, IndentSpec>>): NIndentSpec {
-    let spec: NIndentSpec = 'nil';
-    let parent: any = null;
-
-    for (const node of path) {
-        if (!paredit.walk.hasChildren(node) || node.type === 'toplevel') continue;
-
-        const sub: NIndentSpec = parent ? getSubSpec(spec, (parent.children || []).indexOf(node)) : 'nil';
-
-        if (Array.isArray(sub)) {
-            spec = sub;
-        } else {
-            const op = (node as any).children[0];
-            const opName = op?.type === 'symbol' 
-                ? paredit.walk.source(text, op).toLowerCase()
-                : null;
-            if (opName) {
-                spec = resolveSpec(opName, bufferPkg, systemSpecs);
-            }
-            else spec = 'nil';
-        }
-        parent = node;
-    }
-    return spec;
-}
-
-export function computeIndent(
-    parentStartCol: number,
-    childIdx: number,
-    spec: NIndentSpec,
-    firstArgCol?: number
-): number {
-    const sub = getSubSpec(spec, childIdx);
-    if (Array.isArray(sub) && sub[0] === '&whole' && typeof sub[1] === 'number')
-        return parentStartCol + sub[1];
-    if (typeof sub === 'number') return parentStartCol + sub;
-
-    // Default indentation
-    if (childIdx === 0) return parentStartCol + 1;
-    if (childIdx > 1 && firstArgCol !== undefined) return firstArgCol;
-    return parentStartCol + 1;
-}
-
 export function getExpectedIndent(text: string, offset: number, bufferPkg: string, systemSpecs: Map<string, Map<string, IndentSpec>>, ast?: any): number {
     if (!ast) ast = paredit.parse(text);
 
-    const path = paredit.walk.containingSexpsAt(ast, offset);
-    const node = path.at(-1);
+    function computeIndent (node: any, spec:NIndentSpec): number | undefined {
+        let idx = 0;
+        let firstArg : any = null;
+        if (text[node.start] === '"') return 0;
+        if (text[node.start] === '(') {
+            // Does the child compute better indent?
+            for (const c of node.children) {
+                if (c.start >= offset) break;
+                if (['list', 'string', 'number', 'symbol', 'char', 'error'].includes(c.type)) {
+                    if ((c.type === 'error' && c.start < offset && offset <= c.end)
+                        || (c.start < offset && offset < c.end)) {
+                        const indent = computeIndent(c, getSubSpec(spec, idx));
+                        if (indent !== undefined) return indent;
+                    }
+                    if (!Array.isArray(spec) && idx === 0 && c.type === 'symbol') {
+                        const op = paredit.walk.source(text, c).toLowerCase();
+                        spec = resolveSpec(op, bufferPkg, systemSpecs);
+                    }
+                    if (idx === 1) firstArg = c;
+                    idx++;
+                }
+            }
 
-    if (!node || !paredit.walk.hasChildren(node) || node.type === 'toplevel') return 0;
+            // Compute indent at current level
+            const sub = getSubSpec(spec, idx);
+            const parentStartCol = getColumn(text, node.start);
+            if (Array.isArray(sub) && sub[0] === '&whole')
+                return parentStartCol + sub[1];
+            if (typeof sub === 'number') return parentStartCol + sub;
 
-    const children = (node as any).children || [];
-    let childIdx = children.findIndex((c: any) => offset <= c.start);
-    if (childIdx === -1) childIdx = children.length;
+            // Default indentation
+            if (firstArg) return getColumn(text, firstArg.start);
+            return parentStartCol + 1;
+        }
+    }
 
-    const parentStart = getColumn(text, node.start);
-
-    const firstArg = children[1];
-    const firstArgCol = firstArg && getColumn(text, firstArg.start);
-
-    const spec = getSpecFromPath(text, path, bufferPkg, systemSpecs);
-
-    return computeIndent(parentStart, childIdx, spec, firstArgCol);
+    return computeIndent(ast, 'nil') || 0;
 }
 
 /*

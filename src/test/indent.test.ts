@@ -138,6 +138,7 @@ testIndent('(let ((x "val"))\n  ; comment\n  (foo\n   |))', 3, 'Inside nested fo
 testIndent('(\"|")', 0, 'Inside empty string at start of list');
 testIndent('(defun f ()\n  \"line 1\n   line 2\"\n  |)', 2, 'After multiline string with leading spaces');
 testIndent('(list \"a\"\n      ; comment\n      |)', 6, 'Align after string and comment line');
+testIndent('(list ; comment\n      |)', 1, 'comment in simple function call');
 
 // Inside string
 testIndent('\"foo|\"', 0, 'Inside string at top level');
