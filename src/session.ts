@@ -6,7 +6,7 @@ import * as os from 'os';
 import { ReplView } from './replView';
 import { DebugView } from './debugView';
 import { plistGet, severityOrder, convertCompilerNote, searchBufferPackage, getSymbol, getExpression, getTopLevelForm,
-    convertCompletionItem, convertLocation, convertDescribeSymbol, convertIndentSpec } from './subr';
+    convertCompletionItem, convertLocation, convertDescribeSymbol, convertIndentSpec, formatAutodocRawForm } from './subr';
 import * as indent from './indent';
 const { Client, util } = require('swank-client');
 const paredit = require('paredit.js');
@@ -18,7 +18,7 @@ const evalDecorationType = vscode.window.createTextEditorDecorationType({
     isWholeLine: true
 })
 
-export class LispSession implements vscode.DocumentFormattingEditProvider, vscode.DocumentRangeFormattingEditProvider, vscode.CompletionItemProvider, vscode.HoverProvider, vscode.DefinitionProvider {
+export class LispSession implements vscode.DocumentFormattingEditProvider, vscode.DocumentRangeFormattingEditProvider, vscode.CompletionItemProvider, vscode.HoverProvider, vscode.DefinitionProvider, vscode.SignatureHelpProvider {
     public client: any;
     public clientReady: Boolean = false;
     private lispProcess: cp.ChildProcess | undefined;
@@ -629,5 +629,38 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
                 (def: any) => convertLocation(def.children[1])));
             return results.filter(Boolean);
         }
+    }
+
+    async provideSignatureHelp(doc: vscode.TextDocument, pos: vscode.Position) {
+        if (!this.clientReady) return;
+
+        const pkg = searchBufferPackage(doc, pos);
+        const text = doc.getText(), offset = doc.offsetAt(pos), ast = paredit.parse(text);
+        const topLevelNode = ast.children.find((child: any) => offset >= child.start && offset <= child.end);
+        
+        if (topLevelNode.type !== 'list') return;
+
+        const rawForm = formatAutodocRawForm(text, offset, topLevelNode);
+        const cmd = `(SWANK:AUTODOC '${rawForm})`;
+        const res = await this.client.rex(cmd, pkg, ':REPL-THREAD');
+        
+        if (res.type !== 'list') return;
+
+        const autodoc = util.from_lisp_string(res.children[0]);
+        if (autodoc === ':not-available' || autodoc === "") return;
+
+        const sigHelp = new vscode.SignatureHelp();
+        const sigInfo = new vscode.SignatureInformation(autodoc.replace('===> ', '').replace(' <===', ''));
+        sigHelp.signatures = [sigInfo];
+        sigHelp.activeSignature = 0;
+
+        const start = autodoc.indexOf('===> ');
+        const end = autodoc.indexOf(' <===');
+        if (start >= 0 && start >= 0) {
+            sigInfo.parameters = [new vscode.ParameterInformation([start, end - 5])];
+            sigInfo.activeParameter = 0;
+        }
+
+        return sigHelp;
     }
 }

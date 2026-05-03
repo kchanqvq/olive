@@ -203,6 +203,39 @@ export function getSymbol(doc: vscode.TextDocument, pos: vscode.Position): strin
     return range && doc.getText(range);
 }
 
+export function formatAutodocRawForm(text: string, offset: number, node: any): string {
+    // assumes node.type === 'list'
+    const parts: string[] = [];
+    let hasCursor = false, spaceAfterLast = false;
+
+    for (const child of node.children) {
+        if (!['list', 'string', 'number', 'symbol', 'char', 'error'].includes(child.type))
+            continue;
+        if (offset >= child.start && offset < child.end) {
+            if (child.type === 'list') {
+                parts.push(formatAutodocRawForm(text, offset, child));
+            } else {
+                parts.push(util.to_lisp_string(text.substring(child.start, child.end)));
+                parts.push('SWANK::%CURSOR-MARKER%');
+            }
+            hasCursor = true;
+            break;
+        } else if (child.end <= offset) {
+            parts.push(util.to_lisp_string(text.substring(child.start, child.end)));
+            if (child.end < offset) spaceAfterLast = true;
+        } else {
+            break;
+        }
+    }
+
+    if (!hasCursor) {
+        if (spaceAfterLast) parts.push('""');
+        parts.push('SWANK::%CURSOR-MARKER%');
+    }
+
+    return '(' + parts.join(' ') + ')';
+}
+
 export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, direction: 'prev' | 'next', ast?: any): vscode.Range | undefined {
     const offset = doc.offsetAt(pos);
     if (!ast) ast = paredit.parse(doc.getText());
