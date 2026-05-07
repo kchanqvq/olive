@@ -52,17 +52,17 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.disconnect', () => this.disconnect()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.interrupt', () => this.interrupt()));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evaluating', () => vscode.commands.executeCommand('olive.interrupt')));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.syncRepl', () => this.syncRepl()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileFile', () => this.compileFile()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileFileDebug', () => this.compileFile("'((CL:DEBUG . 3))")));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.loadFile', () => this.loadFile()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileDefun', () => this.compileDefun()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.compileDefunDebug', () => this.compileDefun("'((CL:DEBUG . 3))")));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evalLastExpression', () => this.evalLastExpression()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evalDefun', () => this.evalDefun()));
+        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.syncRepl', (editor, edit) => this.syncRepl(editor, edit)));
+        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.compileFile', (editor, edit) => this.compileFile(editor, edit)));
+        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.compileFileDebug', (editor, edit) => this.compileFile(editor, edit, "'((CL:DEBUG . 3))")));
+        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.loadFile', (editor, edit) => this.loadFile(editor, edit)));
+        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.compileDefun', (editor, edit) => this.compileDefun(editor, edit)));
+        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.compileDefunDebug', (editor, edit) => this.compileDefun(editor, edit, "'((CL:DEBUG . 3))")));
+        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.evalLastExpression', (editor, edit) => this.evalLastExpression(editor, edit)));
+        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.evalDefun', (editor, edit) => this.evalDefun(editor, edit)));
         this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.loadWorkspaceSystem', () => this.loadWorkspaceSystem()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.indentLine', () => this.indentLine()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.newlineAndIndent', () => this.newlineAndIndent()));
+        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.indentLine', (editor, edit) => this.indentLine(editor, edit)));
+        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.newlineAndIndent', (editor, edit) => this.newlineAndIndent(editor, edit)));
     }
 
     private checkClient() {
@@ -338,11 +338,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         }
     }
 
-    public async compileFile(policy: string = 'NIL') {
+    public async compileFile(editor: vscode.TextEditor, edit: vscode.TextEditorEdit, policy: string = 'NIL') {
         if (!this.checkClient()) return;
-
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) return;
 
         const doc = editor.document;
         if (doc.isDirty) await doc.save();
@@ -372,11 +369,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         });
     }
 
-    public async loadFile() {
+    public async loadFile(editor: vscode.TextEditor, edit: vscode.TextEditorEdit) {
         if (!this.checkClient()) return;
-
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) return;
 
         const doc = editor.document;
         if (doc.isDirty) await doc.save();
@@ -423,11 +417,8 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         });
     }
 
-    public async compileDefun(policy: string = 'NIL') {
+    public async compileDefun(editor: vscode.TextEditor, edit: vscode.TextEditorEdit, policy: string = 'NIL') {
         if (!this.checkClient()) return;
-
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) return;
 
         const doc = editor.document, pos = editor.selection.active;
         const range = getTopLevelForm(doc, pos);
@@ -452,22 +443,20 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
 
     }
 
-    public async evalLastExpression() {
+    public async evalLastExpression(editor: vscode.TextEditor, edit: vscode.TextEditorEdit) {
         if (!this.checkClient()) return;
-        const editor = vscode.window.activeTextEditor;
 
-        const doc = editor?.document, pos = editor?.selection.active;
-        const range = doc && pos && getExpression(doc, pos, 'prev');
+        const doc = editor.document, pos = editor.selection.active;
+        const range = getExpression(doc, pos, 'prev');
         if (range) await this.evalRegion(editor, range);
         else vscode.window.showErrorMessage('No expression at or before the selection.')
     }
 
-    public async evalDefun() {
+    public async evalDefun(editor: vscode.TextEditor, edit: vscode.TextEditorEdit) {
         if (!this.checkClient()) return;
-        const editor = vscode.window.activeTextEditor;
 
-        const doc = editor?.document, pos = editor?.selection.active;
-        const range = doc && pos && getTopLevelForm(doc, pos);
+        const doc = editor.document, pos = editor.selection.active;
+        const range = getTopLevelForm(doc, pos);
         if (range) await this.evalRegion(editor, range);
         else vscode.window.showErrorMessage('No expression at or before the selection.')
     }
@@ -501,18 +490,15 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         await this.loadSystem(path.basename(winner, '.asd'), winner);
     }
 
-    public async syncRepl() {
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-            const doc = editor.document, uri = doc.uri;
-            if (uri.scheme === 'file') {
-                const dir = path.dirname(uri.fsPath);
-                await this.client.rex(`(SWANK:SET-DEFAULT-DIRECTORY (UIOP:PARSE-NATIVE-NAMESTRING ${util.to_lisp_string(dir)}))`,
-                    'COMMON-LISP-USER', ':REPL-THREAD');
-            }
-            if (doc.languageId === 'common-lisp') {
-                this.replProvider.setPackage(searchBufferPackage(doc, editor.selection.active));
-            }
+    public async syncRepl(editor: vscode.TextEditor, edit: vscode.TextEditorEdit) {
+        const doc = editor.document, uri = doc.uri;
+        if (uri.scheme === 'file') {
+            const dir = path.dirname(uri.fsPath);
+            await this.client.rex(`(SWANK:SET-DEFAULT-DIRECTORY (UIOP:PARSE-NATIVE-NAMESTRING ${util.to_lisp_string(dir)}))`,
+                'COMMON-LISP-USER', ':REPL-THREAD');
+        }
+        if (doc.languageId === 'common-lisp') {
+            this.replProvider.setPackage(searchBufferPackage(doc, editor.selection.active));
         }
     }
 
@@ -535,37 +521,27 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         })
     }
 
-    public async indentLine() {
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-            const doc = editor.document;
-            const lineIdx = editor.selection.active.line;
-            const line = doc.lineAt(lineIdx);
-            if (line.isEmptyOrWhitespace) return;
-            const pkg = searchBufferPackage(doc, new vscode.Position(lineIdx, 0));
-            const text = doc.getText(), ast = paredit.parse(text);
-            const offset = doc.offsetAt(new vscode.Position(lineIdx, line.firstNonWhitespaceCharacterIndex));
-            const desired = indent.getExpectedIndent(text, offset, pkg, this.systemSpecs, ast);
-            const actual = line.text.match(/^\s*/)?.[0].length || 0;
-            if (actual !== desired) {
-                const workspaceEdit = new vscode.WorkspaceEdit();
-                workspaceEdit.set(doc.uri, [vscode.TextEdit.replace(new vscode.Range(lineIdx, 0, lineIdx, actual), ' '.repeat(desired))]);
-                await vscode.workspace.applyEdit(workspaceEdit);
-            }
+    public indentLine(editor: vscode.TextEditor, edit: vscode.TextEditorEdit) {
+        const doc = editor.document;
+        const lineIdx = editor.selection.active.line;
+        const line = doc.lineAt(lineIdx);
+        if (line.isEmptyOrWhitespace) return;
+        const pkg = searchBufferPackage(doc, new vscode.Position(lineIdx, 0));
+        const text = doc.getText(), ast = paredit.parse(text);
+        const offset = doc.offsetAt(new vscode.Position(lineIdx, line.firstNonWhitespaceCharacterIndex));
+        const desired = indent.getExpectedIndent(text, offset, pkg, this.systemSpecs, ast);
+        const actual = line.text.match(/^\s*/)?.[0].length || 0;
+        if (actual !== desired) {
+            edit.replace(new vscode.Range(lineIdx, 0, lineIdx, actual), ' '.repeat(desired));
         }
     }
 
-    public async newlineAndIndent() {
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-            const doc = editor.document, pos = editor.selection.active;
-            const text = doc.getText();
-            const pkg = searchBufferPackage(doc, pos);
-            const indentVal = indent.getExpectedIndent(text, doc.offsetAt(pos), pkg, this.systemSpecs);
-            await editor.edit(editBuilder => {
-                editBuilder.replace(editor.selection, '\n' + ' '.repeat(indentVal));
-            });
-        }
+    public newlineAndIndent(editor: vscode.TextEditor, edit: vscode.TextEditorEdit) {
+        const doc = editor.document, pos = editor.selection.active;
+        const text = doc.getText();
+        const pkg = searchBufferPackage(doc, pos);
+        const indentVal = indent.getExpectedIndent(text, doc.offsetAt(pos), pkg, this.systemSpecs);
+        edit.replace(editor.selection, '\n' + ' '.repeat(indentVal));
     }
 
     provideDocumentFormattingEdits(doc: vscode.TextDocument) {
