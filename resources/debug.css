@@ -73,6 +73,11 @@ td { vertical-align: top; }
     background: var(--vscode-list-hoverBackground);
 }
 
+.frame-container[open] .frame-header {
+    background: var(--vscode-list-activeSelectionBackground);
+    color: var(--vscode-list-activeSelectionForeground);
+}
+
 .frame-header .codicon {
     font-size: 1em;
     padding: 2px;
@@ -87,13 +92,40 @@ td { vertical-align: top; }
     transform: rotate(90deg);
 }
 
-.codicon:hover {
-    background: var(--vscode-toolbar-hoverBackground);
+.frame-actions {
+    margin-left: 2em;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1em;
+}
+
+.action-button {
+    flex: 1 0 auto;
+    white-space: nowrap;
+    padding: 2px;
+    text-align: center;
+    background-color: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    outline: 1px solid var(--vscode-button-secondaryBorder);
+}
+
+.action-button:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.action-button:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 2px;
+}
+
+.action-button:active {
+    background-color: var(--vscode-button-secondaryBackground);
+    opacity: 0.8;
 }
 
 .frame-locals {
     border-collapse: collapse;
-    margin-left: 1em;
+    margin-left: 2em;
     color: var(--vscode-descriptionForeground);
 }
 
@@ -113,5 +145,5 @@ td { vertical-align: top; }
     padding: 2px;
 }
 .catch-tag {
-    margin-left: 1em;
+    margin-left: 2em;
 }

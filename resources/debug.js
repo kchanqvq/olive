@@ -89,37 +89,33 @@ function render(info) {
 
         summary.append(icon, title);
 
-        if (f.restartable) {
-            const restartLink = document.createElement('div');
-            restartLink.className = 'codicon codicon-debug-restart action';
-            restartLink.title = 'Restart Frame';
-            restartLink.onclick = (e) => {
+        const frameActions = document.createElement('div');
+        frameActions.className = 'frame-actions';
+
+        const printButton = function (legend, title, cmd) {
+            const btn = document.createElement('span');
+            btn.className = 'action-button';
+            btn.textContent = legend;
+            btn.title = title;
+            btn.onclick = (e) => {
                 e.stopPropagation();
-                e.preventDefault();
-                vscode.postMessage({ command: 'restartFrame', index: f.frame_number });
+                vscode.postMessage({ command: cmd, index: f.frame_number });
             };
-            summary.appendChild(restartLink);
+            frameActions.appendChild(btn);
         }
 
-        const sourceLink = document.createElement('span');
-        sourceLink.className = 'codicon codicon-go-to-file action';
-        sourceLink.title = 'Go to Source';
-        sourceLink.onclick = (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            vscode.postMessage({ command: 'goToSource', index: f.frame_number });
-        };
+        printButton('Disassemble', 'Disassemble the code for the frame', 'disassembleFrame');
+        printButton('Evaluate...', 'Evaluate form in the frame', 'evalInFrame');
 
-        const disassembleLink = document.createElement('span');
-        disassembleLink.className = 'codicon codicon-file-binary action';
-        disassembleLink.title = 'Disassemble Frame';
-        disassembleLink.onclick = (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            vscode.postMessage({ command: 'disassemble', index: f.frame_number });
-        };
+        if (f.restartable) {
+            const restartIndicator = document.createElement('span');
+            restartIndicator.className = 'codicon codicon-debug-restart indicator';
+            restartIndicator.title = 'Restartable';
+            summary.appendChild(restartIndicator);
 
-        summary.append(disassembleLink, sourceLink);
+            printButton('Restart', 'Restart execution of the frame', 'restartFrame');
+            printButton('Return...', 'Return value from the frame', 'returnFromFrame');
+        }
 
         const frameLocals = document.createElement('div');
         frameLocals.className = 'frame-locals';
@@ -131,13 +127,24 @@ function render(info) {
         const frameCatchTags = document.createElement('div');
         frameCatchTags.className = 'frame-catch-tags';
 
-        details.ontoggle = () => {
-            if (details.open && !details.hasAttribute('data-loaded')) {
-                vscode.postMessage({ command: 'getFrameLocals', index: f.frame_number });
+        summary.onclick = (e) => {
+            e.preventDefault();
+
+            document.querySelectorAll('.frame-container').forEach(d => {
+                d.open = false;
+            });
+
+            if (!details.open) {
+                details.open = true;
+                vscode.postMessage({ command: 'goToSource', index: f.frame_number });
+                if (!details.hasAttribute('data-loaded')) {
+                    vscode.postMessage({ command: 'getFrameLocals', index: f.frame_number });
+                }
             }
         };
 
         details.appendChild(summary);
+        details.appendChild(frameActions);
         details.appendChild(frameLocals);
         details.appendChild(frameCatchTags);
         framesEl.appendChild(details);

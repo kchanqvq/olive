@@ -89,8 +89,14 @@ export class DebugView {
                 case 'restartFrame':
                     await this.client.rex(`(SWANK:RESTART-FRAME ${m.index})`, 'COMMON-LISP-USER', this.info.thread);
                     break;
-                case 'disassemble':
-                    await this.showDisassembly(m.index);
+                case 'disassembleFrame':
+                    await this.disassembleFrame(m.index);
+                    break;
+                case 'returnFromFrame':
+                    await this.returnFromFrame(m.index);
+                    break;
+                case 'evalInFrame':
+                    await this.evalInFrame(m.index);
                     break;
             }
         });
@@ -111,12 +117,26 @@ export class DebugView {
         this.panel.webview.postMessage({ command: 'setData', info: this.info });
     }
 
-    async showDisassembly(index: number) {
+    async disassembleFrame(index: number) {
         const res = await this.client.rex(`(SWANK:SLDB-DISASSEMBLE ${index})`, 'COMMON-LISP-USER', this.info.thread);
         const content = util.from_lisp_string(res);
-        const title = `Disassembly Frame ${index} (Thread ${this.info.thread})`;
+        const title = `Disassembly: Frame ${index} (Thread ${this.info.thread})`;
         const uri = OliveTextProvider.getInstance().set(content, title);
         const doc = await vscode.workspace.openTextDocument(uri);
         await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preview: true });
+    }
+
+    async returnFromFrame(index: number) {
+        const form = await vscode.window.showInputBox({prompt: 'Return from frame'});
+        const res = await this.client.rex(`(SWANK:SLDB-RETURN-FROM-FRAME ${index} ${util.to_lisp_string(form)})`, 'COMMON-LISP-USER', this.info.thread);
+        vscode.window.showInformationMessage(`Return from frame: ${util.from_lisp_string(res)}`);
+    }
+
+    async evalInFrame(index: number) {
+        const pkg = util.from_lisp_string(await this.client.rex(`(SWANK:FRAME-PACKAGE-NAME ${index})`, 'COMMON-LISP-USER', this.info.thread));
+        const form = await vscode.window.showInputBox({ prompt: `Eval in frame (${pkg})` });
+        const cmd = `(SWANK:EVAL-STRING-IN-FRAME ${util.to_lisp_string(form)} ${index} ${util.to_lisp_string(pkg)} 1 80)`
+        const res = await this.client.rex(cmd, 'COMMON-LISP-USER', this.info.thread);
+        vscode.window.showInformationMessage(util.from_lisp_string(res));
     }
 }
