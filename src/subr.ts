@@ -240,7 +240,7 @@ export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, di
     const offset = doc.offsetAt(pos);
     if (!ast) ast = paredit.parse(doc.getText());
     const nodes = paredit.walk.sexpsAt(ast, offset);
-    let node = nodes.filter((n: any) => n.type !== 'toplevel' && n.type !== 'list' && n.type !== 'error' && n.type !== 'comment').pop();
+    let node = nodes.findLast((n: any) => n.type !== 'toplevel' && n.type !== 'list' && n.type !== 'error' && n.type !== 'comment');
     if (!node) {
         node = (direction === 'prev' ? paredit.walk.prevSexp : paredit.walk.nextSexp)(ast, offset, (n: any) => n.type !== 'comment');
     }

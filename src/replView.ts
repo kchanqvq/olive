@@ -14,11 +14,14 @@ export class ReplView implements vscode.WebviewViewProvider {
     public currentNickname = 'CL-USER';
 
     constructor(private context: vscode.ExtensionContext,
-        private systemSpecs: Map<string, Map<string, indent.IndentSpec>>) {
+        private systemSpecs: Map<string, Map<string, indent.IndentSpec>>
+    ) {
         this.readyPromise = new Promise(resolve => this.readyResolve = resolve);
 
-        context.subscriptions.push(vscode.commands.registerCommand('olive.clearRepl', () => this.clear()));
-        context.subscriptions.push(vscode.commands.registerCommand('olive.setReplPackage', () => this.setPackage()));
+        context.subscriptions.push(
+            vscode.commands.registerCommand('olive.clearRepl', () => this.clear()),
+            vscode.commands.registerCommand('olive.setReplPackage', () => this.setPackage()));
+
         context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration('editor')) this.sendSettings();
         }));

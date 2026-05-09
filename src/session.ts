@@ -30,7 +30,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
     constructor(private ctx: vscode.ExtensionContext,
         private replProvider: ReplView,
         // package -> symbol -> indent.IndentSpec
-        private systemSpecs: Map<string, Map<string, indent.IndentSpec>>) {
+        private systemSpecs: Map<string, Map<string, indent.IndentSpec>>
+    ) {
         this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
         this.statusBarItem.command = 'olive.startLisp';
         this.statusDisconnected();
@@ -47,22 +48,23 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             }
         }));
 
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.connect', () => this.connect()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.startLisp', () => this.startLisp()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.disconnect', () => this.disconnect()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.interrupt', () => this.interrupt()));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.evaluating', () => vscode.commands.executeCommand('olive.interrupt')));
-        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.syncRepl', (editor, edit) => this.syncRepl(editor, edit)));
-        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.compileFile', (editor, edit) => this.compileFile(editor, edit)));
-        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.compileFileDebug', (editor, edit) => this.compileFile(editor, edit, "'((CL:DEBUG . 3))")));
-        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.loadFile', (editor, edit) => this.loadFile(editor, edit)));
-        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.compileDefun', (editor, edit) => this.compileDefun(editor, edit)));
-        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.compileDefunDebug', (editor, edit) => this.compileDefun(editor, edit, "'((CL:DEBUG . 3))")));
-        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.evalLastExpression', (editor, edit) => this.evalLastExpression(editor, edit)));
-        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.evalDefun', (editor, edit) => this.evalDefun(editor, edit)));
-        this.ctx.subscriptions.push(vscode.commands.registerCommand('olive.loadWorkspaceSystem', () => this.loadWorkspaceSystem()));
-        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.indentLine', (editor, edit) => this.indentLine(editor, edit)));
-        this.ctx.subscriptions.push(vscode.commands.registerTextEditorCommand('olive.newlineAndIndent', (editor, edit) => this.newlineAndIndent(editor, edit)));
+        ctx.subscriptions.push(
+            vscode.commands.registerCommand('olive.connect', () => this.connect()),
+            vscode.commands.registerCommand('olive.startLisp', () => this.startLisp()),
+            vscode.commands.registerCommand('olive.disconnect', () => this.disconnect()),
+            vscode.commands.registerCommand('olive.interrupt', () => this.interrupt()),
+            vscode.commands.registerCommand('olive.evaluating', () => vscode.commands.executeCommand('olive.interrupt')),
+            vscode.commands.registerTextEditorCommand('olive.syncRepl', (editor, edit) => this.syncRepl(editor, edit)),
+            vscode.commands.registerTextEditorCommand('olive.compileFile', (editor, edit) => this.compileFile(editor, edit)),
+            vscode.commands.registerTextEditorCommand('olive.compileFileDebug', (editor, edit) => this.compileFile(editor, edit, "'((CL:DEBUG . 3))")),
+            vscode.commands.registerTextEditorCommand('olive.loadFile', (editor, edit) => this.loadFile(editor, edit)),
+            vscode.commands.registerTextEditorCommand('olive.compileDefun', (editor, edit) => this.compileDefun(editor, edit)),
+            vscode.commands.registerTextEditorCommand('olive.compileDefunDebug', (editor, edit) => this.compileDefun(editor, edit, "'((CL:DEBUG . 3))")),
+            vscode.commands.registerTextEditorCommand('olive.evalLastExpression', (editor, edit) => this.evalLastExpression(editor, edit)),
+            vscode.commands.registerTextEditorCommand('olive.evalDefun', (editor, edit) => this.evalDefun(editor, edit)),
+            vscode.commands.registerCommand('olive.loadWorkspaceSystem', () => this.loadWorkspaceSystem()),
+            vscode.commands.registerTextEditorCommand('olive.indentLine', (editor, edit) => this.indentLine(editor, edit)),
+            vscode.commands.registerTextEditorCommand('olive.newlineAndIndent', (editor, edit) => this.newlineAndIndent(editor, edit)));
     }
 
     private checkClient() {
@@ -478,16 +480,10 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
 
         // Some heurstics to guess ASD system/file
         const workspaceFolderName = path.basename(workspaceRoot);
-        asdFiles.sort((a, b) => {
-            const aName = path.basename(a.fsPath, '.asd');
-            const bName = path.basename(b.fsPath, '.asd');
-            if (aName === workspaceFolderName) return -1;
-            if (bName === workspaceFolderName) return 1;
-            return aName.localeCompare(bName);
-        });
+        const winner = asdFiles.find(f => path.basename(f.fsPath, '.asd') === workspaceFolderName)
+            || asdFiles.sort((a, b) => a.fsPath.localeCompare(b.fsPath)).at(-1)!;
 
-        const winner = asdFiles.at(-1)?.fsPath as string;
-        await this.loadSystem(path.basename(winner, '.asd'), winner);
+        await this.loadSystem(path.basename(winner.fsPath, '.asd'), winner.fsPath);
     }
 
     public async syncRepl(editor: vscode.TextEditor, edit: vscode.TextEditorEdit) {
@@ -530,7 +526,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         const text = doc.getText(), ast = paredit.parse(text);
         const offset = doc.offsetAt(new vscode.Position(lineIdx, line.firstNonWhitespaceCharacterIndex));
         const desired = indent.getExpectedIndent(text, offset, pkg, this.systemSpecs, ast);
-        const actual = line.text.match(/^\s*/)?.[0].length || 0;
+        const actual = line.firstNonWhitespaceCharacterIndex;
         if (actual !== desired) {
             edit.replace(new vscode.Range(lineIdx, 0, lineIdx, actual), ' '.repeat(desired));
         }
@@ -550,13 +546,13 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
 
     provideDocumentRangeFormattingEdits(doc: vscode.TextDocument, range: vscode.Range) {
         const text = doc.getText(), ast = paredit.parse(text), edits: vscode.TextEdit[] = [];
+        const pkg = searchBufferPackage(doc, range.start);
         for (let i = range.start.line; i <= range.end.line; i++) {
             const line = doc.lineAt(i);
             if (line.isEmptyOrWhitespace) continue;
             const offset = doc.offsetAt(new vscode.Position(i, line.firstNonWhitespaceCharacterIndex));
-            const pkg = searchBufferPackage(doc, range.start);
             const desired = indent.getExpectedIndent(text, offset, pkg, this.systemSpecs, ast);
-            const actual = line.text.match(/^\s*/)?.[0].length || 0;
+            const actual = line.firstNonWhitespaceCharacterIndex;
             if (actual !== desired) edits.push(vscode.TextEdit.replace(new vscode.Range(i, 0, i, actual), ' '.repeat(desired)));
         }
         return edits;
@@ -632,7 +628,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
 
         const start = autodoc.indexOf('===> ');
         const end = autodoc.indexOf(' <===');
-        if (start >= 0 && start >= 0) {
+        if (start >= 0 && end >= 0) {
             sigInfo.parameters = [new vscode.ParameterInformation([start, end - 5])];
             sigInfo.activeParameter = 0;
         }
