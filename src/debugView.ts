@@ -63,23 +63,25 @@ export class DebugView {
                 case 'goToSource':
                     {
                         const res = await this.client.rex(`(SWANK:FRAME-SOURCE-LOCATION ${m.index})`, 'COMMON-LISP-USER', this.info.thread);
-                        const location = await convertLocation(res);
-                        if (location) {
-                            const doc = await vscode.workspace.openTextDocument(location.uri);
+                        const locationOrUri = await convertLocation(res);
+                        const [uri, range] = (locationOrUri instanceof vscode.Location) ?
+                            [locationOrUri.uri, locationOrUri.range] : [locationOrUri, undefined];
+                        if (uri) {
+                            const doc = await vscode.workspace.openTextDocument(uri);
                             const editor = await vscode.window.showTextDocument(doc, {
                                 viewColumn: vscode.ViewColumn.One,
                                 preview: true,
                                 preserveFocus: true
                             });
 
-                            const range = getExpression(doc, location.range.start, 'next');
-                            if (range) {
+                            const expressionRange = range && getExpression(doc, range.start, 'next');
+                            if (expressionRange) {
                                 this.decorationType?.dispose();
                                 this.decorationType = vscode.window.createTextEditorDecorationType({
                                     backgroundColor: new vscode.ThemeColor('editor.stackFrameHighlightBackground'),
                                 });
-                                editor.setDecorations(this.decorationType, [range]);
-                                editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+                                editor.setDecorations(this.decorationType, [expressionRange]);
+                                editor.revealRange(expressionRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
                             }
                         } else {
                             vscode.window.showErrorMessage('Source location not available.')

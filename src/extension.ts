@@ -10,9 +10,7 @@ export function activate(ctx: vscode.ExtensionContext) {
     const replProvider = new ReplView(ctx, systemSpecs);
     session = new LispSession(ctx, replProvider, systemSpecs);
 
-    ctx.subscriptions.push(
-        vscode.workspace.registerTextDocumentContentProvider(OliveTextProvider.scheme, OliveTextProvider.getInstance())
-    );
+    ctx.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("olive", OliveTextProvider.getInstance()));
 
     ctx.subscriptions.push(
         vscode.window.registerWebviewViewProvider(ReplView.viewType, replProvider,

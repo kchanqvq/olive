@@ -37,12 +37,8 @@
           "Common Lisp",
           "lisp"
         ],
-        "extensions": [
-          ".lisp",
-          ".lsp",
-          ".cl",
-          ".l"
-        ],
+        "extensions": [".lisp", ".lsp", ".cl", ".l"],
+        "filenames": ["Source Form"],
         "configuration": "./language-configuration.json"
       }
     ],

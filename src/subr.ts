@@ -120,16 +120,28 @@ export function convertCompletionItem(sexp: any): vscode.CompletionItem {
     return new vscode.CompletionItem(text, kind);
 }
 
-export async function convertLocation(location: any): Promise<vscode.Location | undefined> {
-    const buffer = location.children[1];
-    if (buffer.children[0].source.toLowerCase() === ':file') {
-        const uri = vscode.Uri.file(util.from_lisp_string(buffer.children[1]));
-        const doc = await vscode.workspace.openTextDocument(uri);
-        return new vscode.Location(uri, convertPosition(doc, location.children[2]) || new vscode.Position(0,0));
-    } else if (buffer.children[0].source.toLowerCase() === ':buffer-and-file') {
-        const uri = vscode.Uri.file(util.from_lisp_string(buffer.children[2]));
-        const doc = await vscode.workspace.openTextDocument(uri);
-        return new vscode.Location(uri, convertPosition(doc, location.children[2]) || new vscode.Position(0, 0));
+export async function convertLocation(location: any): Promise<vscode.Location | vscode.Uri | undefined> {
+    if (location.children[0].source.toLowerCase() === ':location') {
+        const buffer = location.children[1], bufferType = buffer.children[0].source.toLowerCase();
+        if (bufferType === ':file') {
+            const uri = vscode.Uri.file(util.from_lisp_string(buffer.children[1]));
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const pos = convertPosition(doc, location.children[2]);
+            return pos ? new vscode.Location(uri, pos) : uri;
+        } else if (bufferType === ':buffer-and-file') {
+            const uri = vscode.Uri.file(util.from_lisp_string(buffer.children[2]));
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const pos = convertPosition(doc, location.children[2]);
+            return pos ? new vscode.Location(uri, pos) : uri;
+        } else if (bufferType === ':buffer') {
+            const uri = vscode.Uri.parse(util.from_lisp_string(buffer.children[1]));
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const pos = convertPosition(doc, location.children[2]);
+            return pos ? new vscode.Location(uri, pos) : uri;
+        } else if (bufferType === ':source-form') {
+            const uri = OliveTextProvider.getInstance().set(util.from_lisp_string(buffer.children[1]), "Source Form");
+            return uri;
+        }
     }
 }
 
@@ -257,13 +269,12 @@ export function getTopLevelForm(doc: vscode.TextDocument, pos: vscode.Position, 
 }
 
 export class OliveTextProvider implements vscode.TextDocumentContentProvider {
-    static scheme = 'olive-text';
     private static instance: OliveTextProvider;
     private contents = new Map<string, string>();
 
     private constructor() {
         vscode.workspace.onDidCloseTextDocument(doc => {
-            if (doc.uri.scheme === OliveTextProvider.scheme) {
+            if (doc.uri.scheme === "olive") {
                 this.contents.delete(doc.uri.toString());
             }
         });
@@ -282,10 +293,7 @@ export class OliveTextProvider implements vscode.TextDocumentContentProvider {
 
     set(content: string, title: string): vscode.Uri {
         const uuid = crypto.randomUUID();
-        const uri = vscode.Uri.from({
-            scheme: OliveTextProvider.scheme,
-            path: `/${uuid}/${title}`
-        });
+        const uri = vscode.Uri.from({scheme: "olive", path: `/${uuid}/${title}`});
         this.contents.set(uri.toString(), content);
         return uri;
     }

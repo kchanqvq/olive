@@ -403,16 +403,11 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         }, async (progress) => {
             const text = doc.getText(range);
             const pos = `'((:POSITION ${doc.offsetAt(range.start) + 1}) (:LINE ${range.start.line + 1} ${range.start.character + 1}))`
-            // Since we pass DOC into convertCompilerNote eventually,
-            // it assumes everything is inside DOC and does not rely
-            // on BUFFER to resolve location, so we just pass TITLE
-            // for BUFFER instead of, say, URI.
-
             // There might be some namestring vs native-namestring
             // quriks here.  I want to use UIOP:PARSE-NATIVE-NAMESTRING,
             // but SBCL want only string, not pathnames.
             const cmd = `(SWANK:COMPILE-STRING-FOR-EMACS
-${util.to_lisp_string(text)} ${util.to_lisp_string(title)} ${pos}
+${util.to_lisp_string(text)} ${util.to_lisp_string(doc.uri.toString())} ${pos}
 ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
             const res = await this.client.rex(cmd, pkg, 'T');
             this.reportCompilationResult(doc, res, range.start);
@@ -598,7 +593,12 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         const definitions = await this.client.rex(cmd, pkg, ':REPL-THREAD');
         if (definitions.type === 'list') {
             const results = await Promise.all(definitions.children.map(
-                (def: any) => convertLocation(def.children[1])));
+                async (def: any) => {
+                    const locationOrUri = await convertLocation(def.children[1]);
+                    return (locationOrUri instanceof vscode.Uri) ?
+                        new vscode.Location(locationOrUri, new vscode.Position(0, 0)) :
+                        locationOrUri;
+                }));
             return results.filter(Boolean);
         }
     }
