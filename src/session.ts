@@ -307,7 +307,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             const success = util.from_lisp_bool(res.children[2]);
             const duration = Number(res.children[3].source);
 
-            const msgParts = [success ? "Compilation finished" : "Compilation failed"];
+            let msg = success ? "Compilation finished" : "Compilation failed";
             if (util.from_lisp_bool(res.children[1])) {
                 const notes = res.children[1].children;
                 const noteCounts: Map<string, number> = new Map(severityOrder.map(s => [s, 0]));
@@ -316,10 +316,10 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                     noteCounts.set(severity, (noteCounts.get(severity) || 0) + 1);
                 }
 
-                msgParts.push(": ");
+                msg += ": ";
                 for (const [severity, count] of noteCounts) {
                     if (count > 0) {
-                        msgParts.push(`${count} ${severity}${count > 1 ? 's' : ''}  `);
+                        msg += `${count} ${severity}${count > 1 ? 's' : ''}  `;
                     }
                 }
 
@@ -327,14 +327,13 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                     notes.map((n: any) => convertCompilerNote(doc, n, defaultPos)));
 
             } else {
-                msgParts.push(". (No warnings)  ");
+                msg += ". (No warnings)  ";
                 this.diagnostics.set(doc.uri, []);
             }
 
-            msgParts.push(`[${duration.toFixed(2)} secs]`);
+            msg += `[${duration.toFixed(2)} secs]`;
 
-            (success ? vscode.window.showInformationMessage : vscode.window.showErrorMessage)(
-                msgParts.join(""));
+            (success ? vscode.window.showInformationMessage : vscode.window.showErrorMessage)(msg);
         } else {
             vscode.window.showErrorMessage(`Compilation failed: ${util.from_lisp_string(res)}`);
         }
