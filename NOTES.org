@@ -1,0 +1,25 @@
+#+TITLE: OLIVE design notes
+* Caveats
+** SignatureHelper does not pretty print
+VSCode strips all whitespace from =SignatureInformation.label= when rendering, so no pretty printting for us. I tried to abuse raw HTML in =SignatureInformation.documentation= to display both proper pretty print and parameter highlighting, but this leaves an ugly empty label field on top of the hover (=SignatureInformation.label= is empty).
+** Macro stepper opens new document for every expansion
+...instead of updatiing the old document.
+
+This is because if we update the document via =TextDocumentContentProvider.onDidChange=, VSCode do update the text immediately, but has a **debounce logic that cannot be disabled** for other providers like =DocumentLinkProvider= and =InlayHintsProvider=, resulting up of a few seconds of decorations rendered in wrong place. The only way to avoid this glitch is to open a new document everytime.
+
+Note: In the end, we are currently using =TextEditorDecoration= to render the links and overlays, so the above doesn't matter any more. Still, there's no way to update part of a document  =TextDocumentContentProvider=, the only thing we can do is to replace the whole document.
+** Macro stepper operator links are not document links
+You would think we can use =DocumentLinkProvider= to render macro operators as links which expand the macro when Ctrl+clicked (right, no way to get rid of requirement for holding Ctrl). But when both document link and definitions are provided, **VSCode goes to definition for a brief second then follow the link** (WTF???). The only workaround is to detect this in =DefinitionProvider= and not providing definition when cursor is inside a link, but this breaks Go to Definition in context menu. So this is a dead end.
+
+** FUCK VSCODE FUCK MICROSOFT FUCK VSCODE FUCK MICROSOFT FUCK VSCODE FUCK MICROSOFT FUCK VSCODE FUCK MICROSOFT FUCK VSCODE FUCK MICROSOFT FUCK VSCODE FUCK MICROSOFT FUCK VSCODE FUCK MICROSOFT
+* Why reinvent newlineAndIndent command instead of OnTypeFormattingProvider
+OnTypeFormattingProvider cause a brief flash of unindented line when pressing =Enter=. This is unacceptable so I have to reinvent the command and bind it to =Enter=.
+* Why debugger is an SLDB clone?
+** Why not 4-column debugger at the bottom panel?
+1. Bottom panel only support one "webview provider" to provide /one/ webview instance, so we have to display debugger for all thread in it, in 4 column "threads", "condition" (with restarts), "backtrace", "frame".
+2. Debugging workflow in Lisp is usually semi-modal. Users want focus to return to previous buffer after dismissing a debugger (invoking some restart).
+3. 1 and 2 are in conflict. 2 dictates we need one window for every condition/stopped thread, which pretty much lead to an SLDB clone.
+** Why not DAP
+1. same focus manage problem as above, and more below...
+2. VSCode DAP debugger UI is always one line per item, and cramped in side bar. This is painful for we who are used to read S-expr in wide screen.
+3. Focus is different from what is really useful in Lisp, wasting UI estate. E.g. watchpoints and breakpoints have dedicated panel but is not much used in Lisp, at least as of 2026..
