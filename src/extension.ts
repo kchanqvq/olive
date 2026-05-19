@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import { ReplView } from './replView';
 import { LispSession } from './session';
-import { OliveTextProvider } from './subr';
+import { OliveDocumentProvider } from './subr';
+import { macrostepExpand, macrostepCollapse } from './macrostep';
 
 let session: LispSession;
 
@@ -10,11 +11,17 @@ export function activate(ctx: vscode.ExtensionContext) {
     const replProvider = new ReplView(ctx, systemSpecs);
     session = new LispSession(ctx, replProvider, systemSpecs);
 
-    ctx.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("olive", OliveTextProvider.getInstance()));
+    const provider = OliveDocumentProvider.getInstance();
+    ctx.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("olive", provider));
 
     ctx.subscriptions.push(
         vscode.window.registerWebviewViewProvider(ReplView.viewType, replProvider,
             { webviewOptions: { retainContextWhenHidden: true } })
+    );
+
+    ctx.subscriptions.push(
+        vscode.commands.registerTextEditorCommand('olive.macrostep', (editor) => macrostepExpand(session, editor)),
+        vscode.commands.registerTextEditorCommand('olive.macrostepCollapse', (editor) => macrostepCollapse(editor)),
     );
 
     const selector: vscode.DocumentSelector = { language: 'common-lisp' };

@@ -67,7 +67,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             vscode.commands.registerTextEditorCommand('olive.newlineAndIndent', (editor, edit) => this.newlineAndIndent(editor, edit)));
     }
 
-    private checkClient() {
+    public checkClient() {
         if (!this.client) {
             vscode.window.showErrorMessage('Not connected to a Swank server');
             return false;
@@ -265,6 +265,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
 
             
             const info = await this.client.initialize();
+            await this.client.rex("(SWANK:SWANK-REQUIRE 'SWANK-MACROSTEP)", 'COMMON-LISP-USER', 'T');
 
             this.clientReady = true;
             this.statusConnected();
@@ -585,6 +586,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
 
     async provideDefinition(doc: vscode.TextDocument, pos: vscode.Position) {
         if (!this.clientReady) return;
+
         const symbol = getSymbol(doc, pos);
         if (!symbol) return;
         const pkg = searchBufferPackage(doc, pos);

@@ -38,7 +38,7 @@
           "lisp"
         ],
         "extensions": [".lisp", ".lsp", ".cl", ".l"],
-        "filenames": ["Source Form"],
+        "filenames": ["Source Form", "Macro Expansion"],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -147,6 +147,17 @@
         "command": "olive.newlineAndIndent",
         "category": "Olive",
         "title": "Newline and Indent"
+      },
+      {
+        "command": "olive.macrostep",
+        "category": "Olive",
+        "title": "Expand Macro"
+      },
+      {
+        "command": "olive.macrostepCollapse",
+        "category": "Olive",
+        "title": "Collapse Expanded Macro",
+        "when": "editorTextFocus && editorLangId == 'common-lisp' && resourceScheme == 'olive' && resourceFilename == 'Macro Expansion'"
       }
     ],
     "keybindings": [
@@ -207,6 +218,42 @@
         "command": "olive.newlineAndIndent",
         "key": "enter",
         "when": "editorTextFocus && editorLangId == 'common-lisp' && !editorTabMovesFocus && !suggestWidgetVisible && !inSnippetMode && !inlineSuggestionVisible"
+      },
+      {
+        "command": "olive.macrostep",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.macrostep",
+        "key": "enter",
+        "when": "editorTextFocus && editorLangId == 'common-lisp' && resourceScheme == 'olive' && resourceFilename == 'Macro Expansion'"
+      },
+      {
+        "command": "olive.macrostep",
+        "key": "=",
+        "when": "editorTextFocus && editorLangId == 'common-lisp' && resourceScheme == 'olive' && resourceFilename == 'Macro Expansion'"
+      },
+      {
+        "command": "olive.macrostep",
+        "key": "e",
+        "when": "editorTextFocus && editorLangId == 'common-lisp' && resourceScheme == 'olive' && resourceFilename == 'Macro Expansion'"
+      },
+      {
+        "command": "olive.macrostepCollapse",
+        "key": "delete",
+        "when": "editorTextFocus && editorLangId == 'common-lisp' && resourceScheme == 'olive' && resourceFilename == 'Macro Expansion'"
+      },
+      {
+        "command": "olive.macrostepCollapse",
+        "key": "u",
+        "when": "editorTextFocus && editorLangId == 'common-lisp' && resourceScheme == 'olive' && resourceFilename == 'Macro Expansion'"
+      },
+      {
+        "command": "olive.macrostepCollapse",
+        "key": "c",
+        "when": "editorTextFocus && editorLangId == 'common-lisp' && resourceScheme == 'olive' && resourceFilename == 'Macro Expansion'"
       }
     ],
     "configuration": {
@@ -257,6 +304,16 @@
           "command": "olive.syncRepl",
           "when": "editorLangId == common-lisp",
           "group": "1_olive@5"
+        },
+        {
+          "command": "olive.macrostep",
+          "when": "editorLangId == common-lisp",
+          "group": "navigation@9"
+        },
+        {
+          "command": "olive.macrostepCollapse",
+          "when": "editorTextFocus && editorLangId == 'common-lisp' && resourceScheme == 'olive' && resourceFilename == 'Macro Expansion'",
+          "group": "navigation@9"
         }
       ],
       "view/title": [

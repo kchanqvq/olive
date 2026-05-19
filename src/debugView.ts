@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import { plistGet, convertLocation, getExpression, OliveTextProvider } from './subr';
+import { plistGet, convertLocation, getExpression, OliveDocumentProvider } from './subr';
 const { util } = require('swank-client');
 
 export class DebugView {
@@ -123,7 +123,7 @@ export class DebugView {
         const res = await this.client.rex(`(SWANK:SLDB-DISASSEMBLE ${index})`, 'COMMON-LISP-USER', this.info.thread);
         const content = util.from_lisp_string(res);
         const title = `Disassembly: Frame ${index} (Thread ${this.info.thread})`;
-        const uri = OliveTextProvider.getInstance().set(content, title);
+        const uri = OliveDocumentProvider.getInstance().set(content, title);
         const doc = await vscode.workspace.openTextDocument(uri);
         await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preview: true });
     }

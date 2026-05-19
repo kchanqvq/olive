@@ -139,7 +139,7 @@ export async function convertLocation(location: any): Promise<vscode.Location | 
             const pos = convertPosition(doc, location.children[2]);
             return pos ? new vscode.Location(uri, pos) : uri;
         } else if (bufferType === ':source-form') {
-            const uri = OliveTextProvider.getInstance().set(util.from_lisp_string(buffer.children[1]), "Source Form");
+            const uri = OliveDocumentProvider.getInstance().set(util.from_lisp_string(buffer.children[1]), "Source Form");
             return uri;
         }
     }
@@ -268,8 +268,8 @@ export function getTopLevelForm(doc: vscode.TextDocument, pos: vscode.Position, 
     if (node) return new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));
 }
 
-export class OliveTextProvider implements vscode.TextDocumentContentProvider {
-    private static instance: OliveTextProvider;
+export class OliveDocumentProvider implements vscode.TextDocumentContentProvider {
+    private static instance: OliveDocumentProvider;
     private contents = new Map<string, string>();
 
     private constructor() {
@@ -280,11 +280,11 @@ export class OliveTextProvider implements vscode.TextDocumentContentProvider {
         });
     }
 
-    public static getInstance(): OliveTextProvider {
-        if (!OliveTextProvider.instance) {
-            OliveTextProvider.instance = new OliveTextProvider();
+    public static getInstance(): OliveDocumentProvider {
+        if (!OliveDocumentProvider.instance) {
+            OliveDocumentProvider.instance = new OliveDocumentProvider();
         }
-        return OliveTextProvider.instance;
+        return OliveDocumentProvider.instance;
     }
 
     provideTextDocumentContent(uri: vscode.Uri): string | undefined {
