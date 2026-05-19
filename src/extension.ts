@@ -2,13 +2,14 @@ import * as vscode from 'vscode';
 import { ReplView } from './replView';
 import { LispSession } from './session';
 import { OliveDocumentProvider } from './subr';
-import { macrostepExpand, macrostepCollapse } from './macrostep';
+import { macrostepExpand, macrostepCollapse, macrostepClick } from './macrostep';
 
 let session: LispSession;
 
 export function activate(ctx: vscode.ExtensionContext) {
     const systemSpecs = new Map();
     const replProvider = new ReplView(ctx, systemSpecs);
+    const config = vscode.workspace.getConfiguration('olive');
     session = new LispSession(ctx, replProvider, systemSpecs);
 
     const provider = OliveDocumentProvider.getInstance();
@@ -41,7 +42,32 @@ export function activate(ctx: vscode.ExtensionContext) {
         vscode.window.onDidChangeActiveTextEditor(updateLanguageContext)
     );
 
-    if (vscode.workspace.getConfiguration('olive').get('autostart')) {
+    let prevEditor: vscode.TextEditor | undefined;
+    let prevSelection: vscode.Selection | undefined;
+    let prevTime = 0;
+
+    ctx.subscriptions.push(
+        vscode.window.onDidChangeTextEditorSelection(async (e) => {
+            if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) {
+                prevTime = 0;
+                return;
+            }
+            let doubleClickPos: vscode.Position | undefined;
+            if (prevEditor === e.textEditor
+                && prevSelection
+                && prevSelection.isEmpty
+                && e.selections.length === 1
+                && e.selections[0].start.line === prevSelection.start.line
+                && Date.now() - prevTime <= config.get('doubleClickInterval', 600))
+                doubleClickPos = prevSelection.start;
+            prevEditor = e.textEditor;
+            prevSelection = e.selections[0];
+            prevTime = Date.now();
+            if (doubleClickPos)
+                await macrostepClick(session, prevEditor, doubleClickPos);
+        }))
+
+    if (config.get('autostart')) {
         session.startLisp();
     }
 }

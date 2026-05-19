@@ -275,6 +275,11 @@
           "enum": ["simple", "fuzzy"],
           "description": "Completion matching style",
           "enumDescriptions": ["Simple prefix matching", "Fuzzy matching"]
+        },
+        "olive.doubleClickInterval": {
+          "type": "number",
+          "default": 600,
+          "description": "Delay in milliseconds to trigger double click action in the macro stepper. Set to a negative value to disable double click action."
         }
       }
     },

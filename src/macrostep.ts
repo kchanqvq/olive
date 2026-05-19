@@ -113,8 +113,8 @@ export async function macrostepExpand(session: LispSession, editor: vscode.TextE
     }
 }
 
-export async function macrostepCollapse(editor: vscode.TextEditor) {
-    const doc = editor.document, pos = editor.selection.active;
+export async function macrostepCollapse(editor: vscode.TextEditor, position?: vscode.Position) {
+    const doc = editor.document, pos = position || editor.selection.active;
     const offset = doc.offsetAt(pos);
 
     const originals = originalMap.get(doc);
@@ -143,4 +143,16 @@ export async function macrostepCollapse(editor: vscode.TextEditor) {
 
         await showExpansion(newContent, doc.positionAt(original.from), editor.viewColumn, links, newOriginals);
     }
+    else {
+        vscode.window.showErrorMessage(`No expanded macro at cursor`);
+    }
+}
+
+export async function macrostepClick(session: LispSession, editor: vscode.TextEditor, position: vscode.Position) {
+    const doc = editor.document, offset = doc.offsetAt(position);
+    const links = linkMap.get(editor.document) || [];
+    if (links.find(r => r.from <= offset && offset <= r.to))
+        macrostepExpand(session, editor, position)
+    else
+        macrostepCollapse(editor, position);
 }
