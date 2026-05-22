@@ -3,6 +3,7 @@
   "displayName": "Olive",
   "description": "A SLIME-style Lisp REPL for VSCode",
   "version": "0.0.1",
+  "repository": "github:kchanqvq/olive",
   "engines": {
     "vscode": "^1.75.0"
   },
