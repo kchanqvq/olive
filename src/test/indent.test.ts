@@ -121,6 +121,18 @@ testIndent('(prog2\n|)', 4, 'prog2: first form');
 // With-slots
 testIndent('(with-slots (a b) x\n|)', 2, 'with-slots: body');
 
+// Tagbody forms
+testIndent('(tagbody\n|)', 3, 'tagbody: default indent');
+testIndent('(tagbody\n |tag)', 1, 'tagbody: before tag');
+testIndent('(tagbody\n tag\n |)', 3, 'tagbody: after tag');
+testIndent('(tagbody\n (foo)\n |)', 3, 'tagbody: after form');
+
+// Prog forms
+testIndent('(prog |)', 4, 'prog: bindings');
+testIndent('(prog (x)\n|)', 3, 'prog: default indent');
+testIndent('(prog (x)\n |tag)', 1, 'prog: before tag');
+testIndent('(prog (x)\n tag\n |)', 3, 'prog: after tag');
+
 // Default alignment (no spec)
 testIndent('(list |)', 1, 'default: after op');
 testIndent('(list\n|)', 1, 'default: next line');

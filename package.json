@@ -37,8 +37,16 @@
           "Common Lisp",
           "lisp"
         ],
-        "extensions": [".lisp", ".lsp", ".cl", ".l"],
-        "filenames": ["Source Form", "Macro Expansion"],
+        "extensions": [
+          ".lisp",
+          ".lsp",
+          ".cl",
+          ".l"
+        ],
+        "filenames": [
+          "Source Form",
+          "Macro Expansion"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -395,7 +403,8 @@
     "fetch-slime": "curl -L https://github.com/slime/slime/archive/refs/tags/v2.32.tar.gz | tar xz && rm -rf slime && mv slime-2.32 slime",
     "bundle-watch": "npm run bundle -- --watch",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "postinstall": "patch-package"
   },
   "devDependencies": {
     "@types/node": "^16.18.126",
@@ -405,6 +414,7 @@
     "@vscode/codicons": "^0.0.45",
     "esbuild": "^0.17.5",
     "eslint": "^8.31.0",
+    "patch-package": "^8.0.1",
     "typescript": "^4.9.4"
   },
   "dependencies": {

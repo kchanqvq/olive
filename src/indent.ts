@@ -5,8 +5,14 @@
 // Emacs do the opposite? Because of our choice we don't need the
 // special case for tentative-defun
 
-// - Our heursitcs only recognize define-***. These are what is
+// - We only recognize define-*** as DEFUN-like. These are what is
 // recognized in syntax highlight rules (even in Emacs) anyway
+
+// - We pass less context information (like source path) to simulated
+// custom indent functions (like lisp-indent-tagbody), and are strict
+// about where they appear. Arbitrary custom indent should still
+// expressible via some tree automata states, but I find that this is
+// never needed in practice.
 
 import * as paredit from 'paredit.js';
 
@@ -68,6 +74,7 @@ function normalizeSpec(spec: IndentSpec, bufferPkg: string, systemSpecs: Map<str
         }
         return spec.map(s => normalizeSpec(s, bufferPkg, systemSpecs));
     }
+    if (spec === '&lambda') return 4;
     return spec;
 }
 
@@ -79,8 +86,15 @@ export function getSubSpec(spec: NIndentSpec, argIdx: number): IndentSpec {
 
     for (let j = i; j < spec.length; j++) {
         const s = spec[j];
-        if (s === '&rest') return spec[j + 1] === '&lambda' ? 4 : spec[j + 1];
-        if (currIdx === argIdx) return s === '&lambda' ? 4 : s;
+        if (s === '&rest') {
+            let rest = spec[j + 1];
+            // Special case for &rest (&whole ...), &whole only apply
+            // to first arg
+            if (Array.isArray(rest) && rest[0] === '&whole' && argIdx > currIdx)
+                rest = rest.slice(2);
+            return rest;
+        }
+        if (currIdx === argIdx) return s;
         currIdx++;
     }
     return spec.at(-1) || 'nil';
@@ -91,30 +105,38 @@ export function getColumn(text: string, offset: number): number {
     return offset - (lastNewline + 1);
 }
 
+function nodeContains(node: any, offset: number) {
+    return (node.type === 'error' && node.start < offset && offset <= node.end)
+        || (node.start < offset && offset < node.end);
+}
+
 export function getExpectedIndent(text: string, offset: number, bufferPkg: string, systemSpecs: Map<string, Map<string, IndentSpec>>, ast?: any): number {
     if (!ast) ast = paredit.parse(text);
+    if (ast.type === 'toplevel') ast = ast.children.find((c: any) => nodeContains(c, offset));
+    if (!ast) return 0;
 
     function computeIndent (node: any, spec:NIndentSpec): number | undefined {
         let idx = 0;
-        let firstArg : any = null;
+        let alignArg : any = null;
         if (text[node.start] === '"') return 0;
         if (text[node.start] === '(') {
+            const children = node.children.filter((c: any) => ['list', 'string', 'number', 'symbol', 'char', 'error'].includes(c.type));
             // Does the child compute better indent?
-            for (const c of node.children) {
+            for (const c of children) {
                 if (c.start >= offset) break;
-                if (['list', 'string', 'number', 'symbol', 'char', 'error'].includes(c.type)) {
-                    if ((c.type === 'error' && c.start < offset && offset <= c.end)
-                        || (c.start < offset && offset < c.end)) {
-                        const indent = computeIndent(c, getSubSpec(spec, idx));
-                        if (indent !== undefined) return indent;
-                    }
-                    if (!Array.isArray(spec) && idx === 0 && c.type === 'symbol') {
-                        const op = paredit.walk.source(text, c).toLowerCase();
-                        spec = resolveSpec(op, bufferPkg, systemSpecs);
-                    }
-                    if (idx === 1) firstArg = c;
-                    idx++;
+                if (nodeContains(c, offset)) {
+                    const indent = computeIndent(c, getSubSpec(spec, idx));
+                    if (indent !== undefined) return indent;
                 }
+                if (!Array.isArray(spec) && idx === 0 && c.type === 'symbol') {
+                    const op = paredit.walk.source(text, c).toLowerCase();
+                    spec = resolveSpec(op, bufferPkg, systemSpecs);
+                }
+                // Align to closest preceding argument that starts a new line, or the first argument
+                if (idx === 1 ||
+                    alignArg && text.slice(alignArg.end, c.start).indexOf('\n') >= 0)
+                    alignArg = c;
+                idx++;
             }
 
             // Compute indent at current level
@@ -123,9 +145,13 @@ export function getExpectedIndent(text: string, offset: number, bufferPkg: strin
             if (Array.isArray(sub) && sub[0] === '&whole')
                 return parentStartCol + sub[1];
             if (typeof sub === 'number') return parentStartCol + sub;
+            if (sub === 'lisp-indent-tagbody') {
+                const isTag = idx < children.length && !['list', 'error'].includes(children[idx].type);
+                return parentStartCol + (isTag ? 1: 3);
+            }
 
             // Default indentation
-            if (firstArg) return getColumn(text, firstArg.start);
+            if (alignArg) return getColumn(text, alignArg.start);
             return parentStartCol + 1;
         }
     }
@@ -177,9 +203,7 @@ export const defaultIndentSpecs: Record<string, IndentSpec> = {
     'defpackage': [4, 2],
     'defstruct': [['&whole', 4, '&rest', ['&whole', 2, '&rest', 1]], '&rest', ['&whole', 2, '&rest', 1]],
     'destructuring-bind': ['&lambda', 4, '&body'],
-    // 'do': 'lisp-indent-do',
-    // TODO: tags inside DO
-    'do': [['&whole', 'nil', '&rest', 'nil'], ['&whole', 'nil', '&rest', '1'], '&body'],
+    'do': [['&whole', 'nil', '&rest', 'nil'], ['&whole', 'nil', '&rest', '1'], 'lisp-indent-tagbody'],
     'do*': ['as', 'do'],
     'dolist': [['&whole', 4, 2, 1], '&body'],
     'dotimes': ['as', 'dolist'],
@@ -213,7 +237,7 @@ export const defaultIndentSpecs: Record<string, IndentSpec> = {
     'named-lambda': [4, '&lambda', '&rest', 2], // for now
     'pprint-logical-block': [4, 2],
     'print-unreadable-object': [['&whole', 4, 1, '&rest', 1], '&body'],
-    // 'prog': ['&lambda', '&rest', 'lisp-indent-tagbody'],
+    'prog': ['&lambda', '&rest', 'lisp-indent-tagbody'],
     'prog*': ['as', 'prog'],
     'prog1': 1,
     'prog2': 2,
@@ -222,7 +246,7 @@ export const defaultIndentSpecs: Record<string, IndentSpec> = {
     'return': 0,
     'return-from': ['nil', '&body'],
     'symbol-macrolet': ['as', 'let'],
-    // 'tagbody': 'lisp-indent-tagbody',
+    'tagbody': ['&rest', 'lisp-indent-tagbody'],
     'throw': 1,
     'unless': 1,
     'unwind-protect': [5, '&body'],
