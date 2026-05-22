@@ -1,7 +1,7 @@
 {
   "name": "olive",
   "displayName": "Olive",
-  "description": "A SLIME-style Lisp REPL for VSCode",
+  "description": "A SLIME-style Common Lisp IDE",
   "version": "0.0.2",
   "publisher": "kchanqvq",
   "repository": "github:kchanqvq/olive",
