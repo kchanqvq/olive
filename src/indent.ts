@@ -105,6 +105,12 @@ export function getColumn(text: string, offset: number): number {
     return offset - (lastNewline + 1);
 }
 
+export function getColumnSkip(text: string, offset: number): number {
+    const lastNewline = text.lastIndexOf('\n', offset - 1);
+    const skipForward = text.substring(0, offset).match(/[',`@^#~]*$/);
+    return (skipForward?.index || 0) - (lastNewline + 1);
+}
+
 function nodeContains(node: any, offset: number) {
     return (node.type === 'error' && node.start < offset && offset <= node.end)
         || (node.start < offset && offset < node.end);
@@ -118,7 +124,11 @@ export function getExpectedIndent(text: string, offset: number, bufferPkg: strin
     function computeIndent (node: any, spec:NIndentSpec): number | undefined {
         let idx = 0;
         let alignArg : any = null;
-        if (text[node.start] === '"') return 0;
+        if (node.type === 'string' || node.type === 'error' && node.error.startsWith('Expected \'"\'')) {
+            const lineStart = text.lastIndexOf('\n', offset - 1) + 1;
+            const isFirstChar = text.slice(lineStart, offset).search(/\S/) < 0;
+            return isFirstChar ? getColumn(text, offset) : 0;
+        }
         if (text[node.start] === '(') {
             const children = node.children.filter((c: any) => ['list', 'string', 'number', 'symbol', 'char', 'error'].includes(c.type));
             // Does the child compute better indent?
@@ -151,7 +161,7 @@ export function getExpectedIndent(text: string, offset: number, bufferPkg: strin
             }
 
             // Default indentation
-            if (alignArg) return getColumn(text, alignArg.start);
+            if (alignArg) return getColumnSkip(text, alignArg.start);
             return parentStartCol + 1;
         }
     }

@@ -265,7 +265,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
 
             
             const info = await this.client.initialize();
-            await this.client.rex("(SWANK:SWANK-REQUIRE 'SWANK-MACROSTEP)", 'COMMON-LISP-USER', 'T');
+            await this.client.rex("(SWANK:SWANK-REQUIRE '(SWANK-IO-PACKAGE::SWANK-MACROSTEP SWANK-IO-PACKAGE::SWANK-INDENTATION))",
+                'COMMON-LISP-USER', 'T');
 
             this.clientReady = true;
             this.statusConnected();

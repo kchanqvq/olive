@@ -190,8 +190,8 @@ export function convertIndentSpec(sexp: any): IndentSpec {
         return sexp.children.map(convertIndentSpec);
     } else if (sexp.type === 'number') {
         return Number(sexp.source);
-    } else if (sexp.type === 'symbol' && sexp.source.toLowerCase() != 'nil') {
-        return sexp.source;
+    } else if (sexp.type === 'string') {
+        return util.from_lisp_string(sexp);
     } else {return 'nil'}
 }
 
