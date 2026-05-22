@@ -7,9 +7,9 @@ describe('Swank E2E Indentation Test', () => {
         this.timeout(60000); // 1 minute for this E2E test
 
         // 1. Activate extension
-        const extension = vscode.extensions.getExtension('undefined_publisher.olive');
+        const extension = vscode.extensions.getExtension('kchanqvq.olive');
         if (!extension) {
-            throw new Error('Extension "undefined_publisher.olive" not found');
+            throw new Error('Extension "kchanqvq.olive" not found');
         }
         await extension.activate();
 
