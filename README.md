@@ -4,7 +4,7 @@
 
 The REPL is in the bottom panel. Multi-line input works, `Enter` sends the input when it's completed (all parenthesis are balanced). Input history is accessed via `Alt+Up/Down`. The sync button on the top right of the panel attempt to set current package and directory according to the opened file in the editor. If a debugger pop up saying the package does not exist, you probably haven't load the file or system yet -- read further.
 
-You will quite often have the debugger popped up. `ABORT` is bound to key `A` and `CONTINUE` is bound to key `C`, so you can press `A` to dismiss (abort) it. Number keys are also bound to restarts in order.
+You will quite often have the debugger popped up. `ABORT` is bound to key `A` and `CONTINUE` is bound to key `C`, so you can press `A` to dismiss (abort) it. Number keys are also bound to restarts in order. Clicking the stack frames jump to the source, shows local variables, and some other useful actions.
 
 ![REPL Demo](demo/repl.gif)
 
@@ -21,3 +21,11 @@ The play button (also key `F5`) on the top right of the editor window compiles a
 `Ctrl/Cmd+Enter` compiles the current top-level form (i.e. surrounding or before the cursor). This is particularly useful for defining functions one by one. `Ctrl/Cmd+Shift+Enter` compiles the current top-level form with high debug settings.
 
 Most Lisp projects use the [ASDF](https://asdf.common-lisp.dev/) build system. `Ctrl/Cmd+Shift+L` tries to find a system definition (`.asd`) file under workspace root and load the system. This is handy for loading or reloading all Lisp files in your project and dependencies, after you wrote a working `.asd` file ([tutorial](https://lispcookbook.github.io/cl-cookbook/systems.html)).
+
+## Exploring functions and macros
+
+Unlike many other programming systems, the full source code and reference information for all the libraries and often the Lisp implementation itself (if you compiled SBCL from source) are always available. You can expect `F12` to demystify everything you see!
+
+OLIVE also comes with a macro stepper (inspired by Emacs [macrostep][https://github.com/emacsorphanage/macrostep]). You can press `Ctrl/Cmd+Shift+E` or use "Expand Macro" in the right-click menu to expand a macro form. You can step through the expansion using either keyboard shortcuts (`E` for expansion, `C` for collapse), double click (clicking the link expands, clicking other places collapses), or right-click menu.
+
+![Explore Demo](demo/explore.gif)
