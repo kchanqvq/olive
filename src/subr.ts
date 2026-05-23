@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
-import {IndentSpec} from './indent'
+import {IndentSpec, nodeContains, isRealSexp} from './indent'
 const { util } = require('swank-client');
 const paredit = require('paredit.js');
 
@@ -215,17 +215,19 @@ export function getSymbol(doc: vscode.TextDocument, pos: vscode.Position): strin
     return range && doc.getText(range);
 }
 
-export function formatAutodocRawForm(text: string, offset: number, node: any): string {
-    // assumes node.type === 'list'
+export function formatAutodocRawForm(text: string, offset: number, node: any): string | undefined {
     const parts: string[] = [];
-    let hasCursor = false, spaceAfterLast = false;
+    let hasCursor = false, spaceAfterLast = true;
+
+    if (text[node.start] !== '(') return;
 
     for (const child of node.children) {
         if (!['list', 'string', 'number', 'symbol', 'char', 'error'].includes(child.type))
             continue;
-        if (offset >= child.start && offset < child.end) {
-            if (child.type === 'list') {
-                parts.push(formatAutodocRawForm(text, offset, child));
+        if (nodeContains(child, offset)) {
+            const childForm = formatAutodocRawForm(text, offset, child);
+            if (childForm) {
+                parts.push(childForm);
             } else {
                 parts.push(util.to_lisp_string(text.substring(child.start, child.end)));
                 parts.push('SWANK::%CURSOR-MARKER%');
@@ -234,7 +236,7 @@ export function formatAutodocRawForm(text: string, offset: number, node: any): s
             break;
         } else if (child.end <= offset) {
             parts.push(util.to_lisp_string(text.substring(child.start, child.end)));
-            if (child.end < offset) spaceAfterLast = true;
+            spaceAfterLast = child.end < offset;
         } else {
             break;
         }

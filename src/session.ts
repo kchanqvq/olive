@@ -611,10 +611,9 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         const pkg = searchBufferPackage(doc, pos);
         const text = doc.getText(), offset = doc.offsetAt(pos), ast = paredit.parse(text);
         const topLevelNode = ast.children.find((child: any) => offset >= child.start && offset <= child.end);
-        
-        if (topLevelNode.type !== 'list') return;
 
         const rawForm = formatAutodocRawForm(text, offset, topLevelNode);
+        if (!rawForm) return;
         const cmd = `(SWANK:AUTODOC '${rawForm})`;
         const res = await this.client.rex(cmd, pkg, ':REPL-THREAD');
         

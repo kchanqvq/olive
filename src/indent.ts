@@ -111,9 +111,13 @@ export function getColumnSkip(text: string, offset: number): number {
     return (skipForward?.index || 0) - (lastNewline + 1);
 }
 
-function nodeContains(node: any, offset: number) {
+export function nodeContains(node: any, offset: number) {
     return (node.type === 'error' && node.start < offset && offset <= node.end)
         || (node.start < offset && offset < node.end);
+}
+
+export function isRealSexp(node: any): boolean {
+    return ['list', 'string', 'number', 'symbol', 'char', 'error'].includes(node.type);
 }
 
 export function getExpectedIndent(text: string, offset: number, bufferPkg: string, systemSpecs: Map<string, Map<string, IndentSpec>>, ast?: any): number {
@@ -130,7 +134,7 @@ export function getExpectedIndent(text: string, offset: number, bufferPkg: strin
             return isFirstChar ? getColumn(text, offset) : 0;
         }
         if (text[node.start] === '(') {
-            const children = node.children.filter((c: any) => ['list', 'string', 'number', 'symbol', 'char', 'error'].includes(c.type));
+            const children = node.children.filter(isRealSexp);
             // Does the child compute better indent?
             for (const c of children) {
                 if (c.start >= offset) break;
