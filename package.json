@@ -231,12 +231,6 @@
       },
       {
         "command": "olive.macrostep",
-        "key": "ctrl+shift+e",
-        "mac": "cmd+shift+e",
-        "when": "editorTextFocus && editorLangId == 'common-lisp'"
-      },
-      {
-        "command": "olive.macrostep",
         "key": "enter",
         "when": "editorTextFocus && editorLangId == 'common-lisp' && resourceScheme == 'olive' && resourceFilename == 'Macro Expansion'"
       },
@@ -249,6 +243,12 @@
         "command": "olive.macrostep",
         "key": "e",
         "when": "editorTextFocus && editorLangId == 'common-lisp' && resourceScheme == 'olive' && resourceFilename == 'Macro Expansion'"
+      },
+      {
+        "command": "olive.macrostep",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorTextFocus && editorLangId == 'common-lisp'"
       },
       {
         "command": "olive.macrostepCollapse",
