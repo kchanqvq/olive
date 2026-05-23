@@ -18,7 +18,7 @@ const evalDecorationType = vscode.window.createTextEditorDecorationType({
     isWholeLine: true
 })
 
-export class LispSession implements vscode.DocumentFormattingEditProvider, vscode.DocumentRangeFormattingEditProvider, vscode.CompletionItemProvider, vscode.HoverProvider, vscode.DefinitionProvider, vscode.SignatureHelpProvider {
+export class LispSession implements vscode.DocumentFormattingEditProvider, vscode.DocumentRangeFormattingEditProvider, vscode.CompletionItemProvider, vscode.HoverProvider, vscode.DefinitionProvider, vscode.ReferenceProvider, vscode.SignatureHelpProvider {
     public client: any;
     public clientReady: Boolean = false;
     private lispProcess: cp.ChildProcess | undefined;
@@ -280,19 +280,19 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
     }
 
     private statusDisconnected() {
-        this.statusBarItem.text = "$(debug-disconnect) Olive: Disconnected";
+        this.statusBarItem.text = "$(debug-disconnect) OLIVE: Disconnected";
         this.statusBarItem.tooltip = "Start lisp process"
         this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
     }
 
     private statusConnecting() {
-        this.statusBarItem.text = "$(sync~spin) Olive: Connecting...";
+        this.statusBarItem.text = "$(sync~spin) OLIVE: Connecting...";
         this.statusBarItem.tooltip = "Restart lisp process"
         this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
     }
 
     private statusConnected() {
-        this.statusBarItem.text = "$(check) Olive: Connected";
+        this.statusBarItem.text = "$(check) OLIVE: Connected";
         this.statusBarItem.tooltip = "Restart lisp process"
         this.statusBarItem.backgroundColor = undefined;
     }
@@ -430,7 +430,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         const code = doc.getText(range);
 
         editor.setDecorations(evalDecorationType, []);
-        const res = await this.client.rex(`(SWANK:INTERACTIVE-EVAL ${util.to_lisp_string(code)} 1 40)`, pkg, ':REPL-THREAD');
+        const res = await this.client.rex(`(SWANK:INTERACTIVE-EVAL ${util.to_lisp_string(code)} 1 40)`, pkg, 'T');
         const resultStr = util.from_lisp_string(res);
         const lineEnd = doc.lineAt(range.end.line).range.end;
 
@@ -563,7 +563,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         const cmd = (style === 'fuzzy') ?
             `(SWANK:FUZZY-COMPLETIONS ${util.to_lisp_string(symbol)} ${util.to_lisp_string(pkg)})` :
             `(SWANK:SIMPLE-COMPLETIONS ${util.to_lisp_string(symbol)} ${util.to_lisp_string(pkg)})`;
-        const res = await this.client.rex(cmd, pkg, ':REPL-THREAD');
+        const res = await this.client.rex(cmd, pkg, 'T');
         const completions = (style === 'fuzzy') ? res.children[0] : res;
         // Pass isComplete = true to force VSCode to always query
         // SLIME. This is because both SLIME and VS Code try to be
@@ -581,7 +581,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         const pkg = searchBufferPackage(doc, pos);
         const cmd = `(CL:IGNORE-ERRORS (SWANK-BACKEND:DESCRIBE-SYMBOL-FOR-EMACS
 (SWANK::PARSE-SYMBOL-OR-LOSE ${util.to_lisp_string(symbol)} SWANK::*BUFFER-PACKAGE*)))`;
-        const res = convertDescribeSymbol(await this.client.rex(cmd, pkg, ':REPL-THREAD'));
+        const res = convertDescribeSymbol(await this.client.rex(cmd, pkg, 'T'));
         if (res) { return new vscode.Hover(res); }
     }
 
@@ -592,7 +592,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         if (!symbol) return;
         const pkg = searchBufferPackage(doc, pos);
         const cmd = `(SWANK:FIND-DEFINITIONS-FOR-EMACS ${util.to_lisp_string(symbol)})`
-        const definitions = await this.client.rex(cmd, pkg, ':REPL-THREAD');
+        const definitions = await this.client.rex(cmd, pkg, 'T');
         if (definitions.type === 'list') {
             const results = await Promise.all(definitions.children.map(
                 async (def: any) => {
@@ -602,6 +602,33 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
                         locationOrUri;
                 }));
             return results.filter(Boolean);
+        }
+    }
+
+    async provideReferences(doc: vscode.TextDocument, pos: vscode.Position) {
+        if (!this.clientReady) return;
+
+        const symbol = getSymbol(doc, pos);
+        if (!symbol) return;
+        const pkg = searchBufferPackage(doc, pos);
+        const cmd = `(SWANK:XREFS '(:CALLS :MACROEXPANDS :BINDS :REFERENCES :SETS :SPECIALIZES)
+${util.to_lisp_string(symbol)})`
+        const references = await this.client.rex(cmd, pkg, 'T');
+        if (references.type === 'list') {
+            const results: vscode.Location[] = [];
+            for (const category of references.children) {
+                if (category.type === 'list' && category.children.length > 1) {
+                    for (const item of category.children.slice(1)) {
+                        const locationOrUri = await convertLocation(item.children[1]);
+                        if (locationOrUri) {
+                            results.push((locationOrUri instanceof vscode.Uri) ?
+                                new vscode.Location(locationOrUri, new vscode.Position(0, 0)) :
+                                locationOrUri);
+                        }
+                    }
+                }
+            }
+            return results;
         }
     }
 
@@ -615,7 +642,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         const rawForm = formatAutodocRawForm(text, offset, topLevelNode);
         if (!rawForm) return;
         const cmd = `(SWANK:AUTODOC '${rawForm})`;
-        const res = await this.client.rex(cmd, pkg, ':REPL-THREAD');
+        const res = await this.client.rex(cmd, pkg, 'T');
         
         if (res.type !== 'list') return;
 

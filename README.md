@@ -8,9 +8,9 @@ You will quite often have the debugger popped up. `ABORT` is bound to key `A` an
 
 ![REPL Demo](demo/repl.gif)
 
-`Ctrl/Cmd+Shift+R` starts a new Lisp process, or restarts it if one is already running. Clicking the "Olive" status bar item has the same effect. Use it in case the state of your Lisp image stops making sense. Be aware you need to load your files/systems into the freshly restarted process again to resume working on them.
+`Ctrl/Cmd+Shift+R` starts a new Lisp process, or restarts it if one is already running. Clicking the "OLIVE" status bar item has the same effect. Use it in case the state of your Lisp image stops making sense. Be aware you need to load your files/systems into the freshly restarted process again to resume working on them.
 
-Olive automatically starts a Lisp process when it is activated, this behavior can be disabled with the `olive.autostart` configuration. Note that many functionalities (accurate indentation, go to definition, hover...) rely on a running Lisp process.
+OLIVE automatically starts a Lisp process when it is activated, this behavior can be disabled with the `olive.autostart` configuration. Note that many functionalities (accurate indentation, go to definition, hover...) rely on a running Lisp process.
 
 ## Loading Files and Systems
 
@@ -26,7 +26,7 @@ Most Lisp projects use the [ASDF](https://asdf.common-lisp.dev/) build system. `
 
 ## Exploring functions and macros
 
-Unlike many other programming systems, the full source code and reference information for all the libraries and often the Lisp implementation itself (if you compiled SBCL from source) are always available. You can expect `F12` to demystify everything you see!
+Unlike many other programming systems, the full source code and reference information for all the libraries and often the Lisp implementation itself (if you compiled SBCL from source) are always available. You can expect `F12` (Go To Definition) to demystify everything you see! Reference commands like `Shift+F12` (Peek References) also work.
 
 OLIVE also comes with a macro stepper (inspired by Emacs [macrostep](https://github.com/emacsorphanage/macrostep)). You can press `Ctrl/Cmd+Shift+E` or use "Expand Macro" in the right-click menu to expand a macro form. You can step through the expansion using either keyboard shortcuts (`E` for expansion, `C` for collapse), double click (clicking the link expands, clicking other places collapses), or right-click menu.
 

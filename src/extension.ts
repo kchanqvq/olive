@@ -29,6 +29,7 @@ export function activate(ctx: vscode.ExtensionContext) {
     ctx.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, session, ':', '*', '+'));
     ctx.subscriptions.push(vscode.languages.registerHoverProvider(selector, session));
     ctx.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, session));
+    ctx.subscriptions.push(vscode.languages.registerReferenceProvider(selector, session));
     ctx.subscriptions.push(vscode.languages.registerSignatureHelpProvider(selector, session, ' ', '('));
     ctx.subscriptions.push(vscode.languages.registerDocumentFormattingEditProvider(selector, session));
     ctx.subscriptions.push(vscode.languages.registerDocumentRangeFormattingEditProvider(selector, session));
