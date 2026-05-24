@@ -1,5 +1,7 @@
 # OLIVE: Old-school LIsp Vscode Extension
 
+You need to install a Common Lisp implementation. For new comers, [SBCL](https://www.sbcl.org) is recommended. Other popular implementations include [CCL](https://ccl.clozure.com) and [ECL](https://ecl.common-lisp.dev/). You need to configure `olive.lispCommand` for implementations other than SBCL. It is also recommended (but optional) to install [Quicklisp](https://quicklisp.org) package manager and configure the [Ultralisp](https://ultralisp.org) distribution.
+
 ## REPL and Debugger
 
 The REPL is in the bottom panel. Multi-line input works, `Enter` sends the input when it's completed (all parenthesis are balanced). Input history is accessed via `Alt+Up/Down`. The sync button on the top right of the panel attempt to set current package and directory according to the opened file in the editor. If a debugger pop up saying the package does not exist, you probably haven't load the file or system yet -- read further.
