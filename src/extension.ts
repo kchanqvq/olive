@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { ReplView } from './replView';
 import { LispSession } from './session';
 import { OliveDocumentProvider } from './subr';
@@ -49,6 +50,11 @@ export function activate(ctx: vscode.ExtensionContext) {
 
     ctx.subscriptions.push(
         vscode.window.onDidChangeTextEditorSelection(async (e) => {
+            // Check if document is relevant
+            const uri = e.textEditor.document.uri;
+            if (!(uri.scheme === 'olive' && path.basename(uri.path) === 'Macro Expansion'))
+                return;
+
             if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) {
                 prevTime = 0;
                 return;
