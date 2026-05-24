@@ -79,6 +79,8 @@ function normalizeSpec(spec: IndentSpec, bufferPkg: string, systemSpecs: Map<str
 }
 
 export function getSubSpec(spec: NIndentSpec, argIdx: number): IndentSpec {
+    // children of data are also data
+    if (spec === 'lisp-indent-data') return spec;
     if (!Array.isArray(spec)) return 'nil';
 
     let i = spec[0] === '&whole' ? 2 : 0;
@@ -135,14 +137,18 @@ export function getExpectedIndent(text: string, offset: number, bufferPkg: strin
         }
         if (text[node.start] === '(') {
             const children = node.children.filter(isRealSexp);
+            if (node.start - 1 >= 0 && text[node.start - 1] === "'")
+                spec = 'lisp-indent-data';
+
             // Does the child compute better indent?
             for (const c of children) {
                 if (c.start >= offset) break;
                 if (nodeContains(c, offset)) {
-                    const indent = computeIndent(c, getSubSpec(spec, idx));
+                    const afterComma = /(,|,@|,.)\s*$/.test(text.substring(0, c.start));
+                    const indent = computeIndent(c, afterComma ? 'nil' : getSubSpec(spec, idx));
                     if (indent !== undefined) return indent;
                 }
-                if (!Array.isArray(spec) && idx === 0 && c.type === 'symbol') {
+                if (!Array.isArray(spec) && idx === 0 && c.type === 'symbol' && spec !== 'lisp-indent-data') {
                     const op = paredit.walk.source(text, c).toLowerCase();
                     spec = resolveSpec(op, bufferPkg, systemSpecs);
                 }
@@ -159,9 +165,10 @@ export function getExpectedIndent(text: string, offset: number, bufferPkg: strin
             if (Array.isArray(sub) && sub[0] === '&whole')
                 return parentStartCol + sub[1];
             if (typeof sub === 'number') return parentStartCol + sub;
-            if (sub === 'lisp-indent-tagbody') {
+            if (sub === 'lisp-indent-data') return parentStartCol + 1;
+            if (sub === 'lisp-indent-tagbody' || sub === 'lisp-indent-do-body') {
                 const isTag = idx < children.length && !['list', 'error'].includes(children[idx].type);
-                return parentStartCol + (isTag ? 1: 3);
+                return parentStartCol + (isTag ? 1: (sub === 'lisp-indent-do-body' ? 2 : 3));
             }
 
             // Default indentation
@@ -217,7 +224,7 @@ export const defaultIndentSpecs: Record<string, IndentSpec> = {
     'defpackage': [4, 2],
     'defstruct': [['&whole', 4, '&rest', ['&whole', 2, '&rest', 1]], '&rest', ['&whole', 2, '&rest', 1]],
     'destructuring-bind': ['&lambda', 4, '&body'],
-    'do': [['&whole', 'nil', '&rest', 'nil'], ['&whole', 'nil', '&rest', '1'], 'lisp-indent-tagbody'],
+    'do': [['&whole', 'nil', '&rest', 'nil'], ['&whole', 'nil', '&rest', '1'], 'lisp-indent-do-body'],
     'do*': ['as', 'do'],
     'dolist': [['&whole', 4, 2, 1], '&body'],
     'dotimes': ['as', 'dolist'],

@@ -395,6 +395,7 @@
     }
   },
   "scripts": {
+    "postinstall": "patch-package",
     "vscode:prepublish": "npm run bundle",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
@@ -416,8 +417,10 @@
     "@vscode/codicons": "^0.0.45",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
-    "esbuild": "^0.17.5",
+    "esbuild": "^0.28.0",
     "eslint": "^8.31.0",
+    "patch-package": "^8.0.1",
+    "postinstall-postinstall": "^2.1.0",
     "typescript": "^4.9.4"
   },
   "dependencies": {

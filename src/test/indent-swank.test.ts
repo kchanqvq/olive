@@ -14,8 +14,8 @@ describe('Swank E2E Indentation Test', () => {
         await extension.activate();
 
         // 2. Wait for Lisp/Swank to initialize
-        console.log('Waiting 5 seconds for Lisp/Swank to start...');
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        console.log('Waiting 3 seconds for Lisp/Swank to start...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
 
         // 3. Open the sample file
         const samplePath = path.join(__dirname, '../../src/test/indent-sample-swank.lisp');
@@ -72,6 +72,6 @@ describe('Swank E2E Indentation Test', () => {
         if (discrepancies > 100) {
             console.log(`... and ${discrepancies - 100} more discrepancies hidden.`);
         }
-        assert.ok(discrepancies <= 79, `Found ${discrepancies} indentation discrepancies.`)
+        assert.ok(discrepancies <= 74, `Found ${discrepancies} indentation discrepancies.`)
     });
 });
