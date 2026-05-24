@@ -92,7 +92,7 @@ function flushOutput() {
     content.innerHTML = '';
     if (activeLine) {
         content.appendChild(activeLine);
-        currentInput.focus();
+        if (document.hasFocus()) currentInput.focus();
     }
     else {
         currentInput = undefined;
@@ -121,7 +121,7 @@ function createNewInput(pkg, readMode) {
 
     line.appendChild(currentInput);
     content.appendChild(line);
-    currentInput.focus();
+    if (document.hasFocus()) currentInput.focus();
     content.scrollTop = content.scrollHeight;
 
     historyIndex = -1;
@@ -248,7 +248,7 @@ function applyCompletion(it) {
         currentInput.selectionStart = currentInput.selectionEnd = newBefore.length;
     }
     hideCompletions();
-    currentInput.focus();
+    if (document.hasFocus()) currentInput.focus();
 }
 
 function hideCompletions() {

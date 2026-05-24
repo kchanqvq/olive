@@ -277,8 +277,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             this.clientReady = true;
             this.statusConnected();
             this.replProvider.setClient(this.client, info);
-            await vscode.commands.executeCommand('olive.replView.focus')
-            // TODO: how to not steal focus???
+            await vscode.commands.executeCommand('olive.replView.open', { preserveFocus: true })
         } catch (err) {
             this.statusDisconnected();
             vscode.window.showErrorMessage(`Failed to connect: ${err}`);

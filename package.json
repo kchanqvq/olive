@@ -6,7 +6,7 @@
   "publisher": "kchanqvq",
   "repository": "github:kchanqvq/olive",
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.100.0"
   },
   "categories": [
     "Programming Languages"
