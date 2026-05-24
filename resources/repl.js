@@ -126,7 +126,8 @@ function createNewInput(pkg, readMode) {
 
     line.appendChild(currentInput);
     content.appendChild(line);
-    if (document.hasFocus()) currentInput.focus();
+    // Stealing focus is acceptable (desired?) for readMode
+    if (document.hasFocus() || readMode) currentInput.focus();
     content.scrollTop = content.scrollHeight;
 
     historyIndex = -1;
