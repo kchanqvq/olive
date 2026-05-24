@@ -235,11 +235,22 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
 
             this.client.on('debug_setup', (info: any) => {
                 const view = this.debugViews.get(info.thread);
+
+                // VSCode focus management does not return focus when
+                // a (debugger) tab is closed, so we have to maintain
+                // it (simulate Emacs quit-window) ourselves.
+
+                // Having to manage focus ourselves is cancerous, the
+                // hardcoded commands are double cancerous.
+                const replFocus = this.replProvider.focus;
+                const column = vscode.window.activeTextEditor?.viewColumn || 1;
+                const cmd = replFocus ? 'olive.replView.focus' : ['', 'workbench.action.focusFirstEditorGroup', 'workbench.action.focusSecondEditorGroup', 'workbench.action.focusThirdEditorGroup', 'workbench.action.focusFourthEditorGroup', 'workbench.action.focusFifthEditorGroup', 'workbench.action.focusSixthEditorGroup', 'workbench.action.focusSeventhEditorGroup', 'workbench.action.focusNinthEditorGroup', 'workbench.action.focusLastEditorGroup'] [column];
+                const quitHook = () => vscode.commands.executeCommand(cmd);
                 if (view) {
-                    view.setup(info);
+                    view.setup(info, quitHook);
                 }
                 else {
-                    this.debugViews.set(info.thread, new DebugView(this.ctx, info, this.client));
+                    this.debugViews.set(info.thread, new DebugView(this.ctx, info, this.client, quitHook));
                 }
             });
 

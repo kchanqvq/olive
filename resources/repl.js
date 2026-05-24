@@ -1,4 +1,5 @@
 import * as indent from '../src/indent';
+import * as paredit from 'paredit.js';
 
 const vscode = acquireVsCodeApi();
 const content = document.getElementById('content');
@@ -18,7 +19,11 @@ let systemSpecs = new Map();
 let settings = { minWordLength: 3, delay: 10 };
 
 window.onclick = () => currentInput?.focus();
-window.onfocus = () => currentInput?.focus();
+window.onfocus = () => {
+    vscode.postMessage({ command: 'focus' });
+    currentInput?.focus();
+}
+window.onblur = () => vscode.postMessage({ command: 'blur' });
 window.onkeydown = e => {
     if (e.ctrlKey && e.key === 'c' && !window.getSelection().toString()) {
         vscode.postMessage({ command: 'interrupt' });
@@ -258,24 +263,7 @@ function hideCompletions() {
 }
 
 function isBalanced(text) {
-    let stringp = false, comments = false, depth = 0;
-    for (let i = 0; i < text.length; i++) {
-        const c = text[i];
-        if (comments) { if (c === '\n') comments = false; }
-        else if (stringp) {
-            if (c === '\\') i++;
-            else if (c === '"') { stringp = false; depth--; }
-        } else {
-            switch (c) {
-                case ';': comments = true; break;
-                case '\\': i++; break;
-                case '(': depth++; break;
-                case ')': depth--; break;
-                case '"': depth++; stringp = true; break;
-            }
-        }
-    }
-    return depth <= 0 && !stringp;
+    return paredit.parse(text).errors.length === 0;
 }
 
 vscode.postMessage({ command: 'ready' });

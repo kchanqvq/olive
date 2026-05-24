@@ -14,7 +14,11 @@ export class DebugView {
     constructor(
         private context: vscode.ExtensionContext,
         private info: any,
-        private client: any
+        private client: any,
+        // VSCode focus management does not return focus when a
+        // (debugger) tab is closed, so we have to maintain it
+        // (simulate Emacs quit-window) ourselves.
+        private quitHook: () => void
     ) {
         this.panel = vscode.window.createWebviewPanel('oliveDebug', `Debugger: Level ${info.level}`, vscode.ViewColumn.Three, {
             enableScripts: true,
@@ -28,6 +32,7 @@ export class DebugView {
             this.decorationType?.dispose();
             if(!this.isHandled)
                 this.client.debug_escape_all(this.info.thread);
+            this.quitHook();
         });
 
         this.panel.webview.onDidReceiveMessage(async m => {
@@ -113,9 +118,10 @@ export class DebugView {
         this.panel.webview.html = html;
     }
 
-    public setup(info: any) {
+    public setup(info: any, quitHook: () => void) {
         this.panel.title = `Debugger: Level ${info.level}`
         this.info = info;
+        this.quitHook = quitHook;
         this.panel.webview.postMessage({ command: 'setData', info: this.info });
     }
 

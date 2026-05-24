@@ -12,6 +12,7 @@ export class ReplView implements vscode.WebviewViewProvider {
     private readyPromise: Promise<void>;
     public currentPackage = 'COMMON-LISP-USER';
     public currentNickname = 'CL-USER';
+    public focus = false;
 
     constructor(private context: vscode.ExtensionContext,
         private systemSpecs: Map<string, Map<string, indent.IndentSpec>>
@@ -106,6 +107,8 @@ export class ReplView implements vscode.WebviewViewProvider {
                 case 'autocomplete': this.autocomplete(m.text, m.requestId); break;
                 case 'interrupt':    this.client?.interrupt(); break;
                 case 'unthrottle':   this.client?.socket.resume(); break;
+                case 'focus':        this.focus = true; break;
+                case 'blur':         this.focus = false; break;
                 case 'ready':        
                     this.sendSettings(); 
                     this.sendSystemSpecs();
