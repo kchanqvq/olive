@@ -142,6 +142,10 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                 this.lispOutputChannel?.appendLine(`\nLisp process exited with code ${code}`);
                 this.lispProcess = undefined;
             });
+            this.lispProcess.on('error', (err) => {
+                this.lispOutputChannel?.appendLine(`\n${err}`);
+                this.lispProcess = undefined;
+            });
 
             this.lispProcess.stdin?.write(lispCode);
 
@@ -161,6 +165,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                     } catch (e) {}
                 }
                 await new Promise(resolve => setTimeout(resolve, 200));
+                if (!this.lispProcess)
+                    throw new Error('Did you install Lisp and configure olive.lispCommand?');
             }
 
             if (!port) {
