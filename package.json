@@ -1,6 +1,6 @@
 {
   "name": "olive",
-  "displayName": "Olive",
+  "displayName": "OLIVE",
   "description": "A SLIME-style Common Lisp IDE",
   "version": "0.0.3",
   "publisher": "kchanqvq",
@@ -62,110 +62,110 @@
     "commands": [
       {
         "command": "olive.startLisp",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Start Lisp and Connect"
       },
       {
         "command": "olive.connect",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Connect to Swank Server"
       },
       {
         "command": "olive.disconnect",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Disconnect from Swank Server"
       },
       {
         "command": "olive.interrupt",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Interrupt"
       },
       {
         "command": "olive.evaluating",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Evaluating... (Click to Interrupt)",
         "icon": "$(loading~spin)"
       },
       {
         "command": "olive.clearRepl",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Clear REPL Output",
         "icon": "$(clear-all)"
       },
       {
         "command": "olive.syncRepl",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Sync REPL package and default directory with editor",
         "icon": "$(sync)"
       },
       {
         "command": "olive.setReplPackage",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Set REPL package",
         "icon": "$(symbol-module)"
       },
       {
         "command": "olive.compileFile",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Compile and load file",
         "icon": "$(run)"
       },
       {
         "command": "olive.compileFileDebug",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Compile and load file (debug)",
         "icon": "$(debug-alt)"
       },
       {
         "command": "olive.loadFile",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Load file",
         "icon": "$(file-text)"
       },
       {
         "command": "olive.compileDefun",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Compile top level form"
       },
       {
         "command": "olive.compileDefunDebug",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Compile top level form (debug)"
       },
       {
         "command": "olive.evalLastExpression",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Evaluate last expression"
       },
       {
         "command": "olive.evalDefun",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Evaluate top level form"
       },
       {
         "command": "olive.loadWorkspaceSystem",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Load ASDF system for current workspace",
         "icon": "$(run)"
       },
       {
         "command": "olive.indentLine",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Indent Line"
       },
       {
         "command": "olive.newlineAndIndent",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Newline and Indent"
       },
       {
         "command": "olive.macrostep",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Expand Macro"
       },
       {
         "command": "olive.macrostepCollapse",
-        "category": "Olive",
+        "category": "OLIVE",
         "title": "Collapse Expanded Macro",
         "when": "editorTextFocus && editorLangId == 'common-lisp' && resourceScheme == 'olive' && resourceFilename == 'Macro Expansion'"
       }
@@ -267,7 +267,7 @@
       }
     ],
     "configuration": {
-      "title": "Olive",
+      "title": "OLIVE",
       "properties": {
         "olive.lispCommand": {
           "type": "string",
