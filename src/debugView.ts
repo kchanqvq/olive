@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as crypto from 'crypto';
 import { plistGet, convertLocation, getExpression, OliveDocumentProvider } from './subr';
 const { util } = require('swank-client');
 
@@ -20,7 +19,7 @@ export class DebugView {
         // (simulate Emacs quit-window) ourselves.
         private quitHook: () => void
     ) {
-        this.panel = vscode.window.createWebviewPanel('oliveDebug', `Debugger: Level ${info.level}`, vscode.ViewColumn.Three, {
+        this.panel = vscode.window.createWebviewPanel('oliveDebug', `Debugger: Level ${info.level}`, vscode.ViewColumn.Two, {
             enableScripts: true,
             localResourceRoots: [
                 vscode.Uri.joinPath(this.context.extensionUri, 'resources'),

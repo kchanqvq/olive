@@ -2,7 +2,7 @@
   "name": "olive",
   "displayName": "OLIVE",
   "description": "A SLIME-style Common Lisp IDE",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "kchanqvq",
   "repository": "github:kchanqvq/olive",
   "engines": {
