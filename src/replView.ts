@@ -1,12 +1,14 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as indent from './indent';
+import { convertLocation } from './subr';
 const { util } = require('swank-client');
 
 export class ReplView implements vscode.WebviewViewProvider {
     public static readonly viewType = 'olive.replView';
     private view?: vscode.WebviewView;
     private readResolver?: (text: string) => void;
+    private getSymbolResolver?: (symbol: string) => void;
     private client: any;
     private readyResolve?: () => void;
     private readyPromise: Promise<void>;
@@ -21,7 +23,8 @@ export class ReplView implements vscode.WebviewViewProvider {
 
         context.subscriptions.push(
             vscode.commands.registerCommand('olive.clearRepl', () => this.clear()),
-            vscode.commands.registerCommand('olive.setReplPackage', () => this.setPackage()));
+            vscode.commands.registerCommand('olive.setReplPackage', () => this.setPackage()),
+            vscode.commands.registerCommand('olive.replGoToDefinition', () => this.goToDefinition()));
 
         context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration('editor')) this.sendSettings();
@@ -109,6 +112,7 @@ export class ReplView implements vscode.WebviewViewProvider {
                 case 'unthrottle':   this.client?.socket.resume(); break;
                 case 'focus':        this.focus = true; break;
                 case 'blur':         this.focus = false; break;
+                case 'getSymbolResult':    this.getSymbolResolver?.(m.symbol); break;
                 case 'ready':        
                     this.sendSettings(); 
                     this.sendSystemSpecs();
@@ -178,6 +182,26 @@ export class ReplView implements vscode.WebviewViewProvider {
     public clear() {
         this.post('flush');
         this.post('addOutput', {text: '; output flushed\n', type: 'status'});
+    }
+
+    public async goToDefinition() {
+        const promise: Promise<string> = new Promise(r => this.getSymbolResolver = r);
+        this.post('getSymbol');
+        const symbol = await promise;
+        if (!symbol.length) return;
+
+        const cmd = `(SWANK:FIND-DEFINITIONS-FOR-EMACS ${util.to_lisp_string(symbol)})`
+        const definitions = await this.client.rex(cmd, this.currentPackage, ':REPL-THREAD');
+        if (definitions.type === 'list') {
+            const def = definitions.children[0];
+            const locationOrUri = await convertLocation(def.children[1]);
+            const loc = (locationOrUri instanceof vscode.Uri) ?
+                new vscode.Location(locationOrUri, new vscode.Position(0, 0)) :
+                locationOrUri;
+            if (loc) {
+                await vscode.window.showTextDocument(loc.uri, {preview: true, selection: loc.range});
+            }
+        }
     }
 
     private async post(command: string, data: any = {}) {

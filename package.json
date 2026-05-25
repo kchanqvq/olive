@@ -105,6 +105,12 @@
         "icon": "$(symbol-module)"
       },
       {
+        "command": "olive.replGoToDefinition",
+        "category": "OLIVE",
+        "title": "Go To Definition",
+        "when": "olive.replView.active"
+      },
+      {
         "command": "olive.compileFile",
         "category": "OLIVE",
         "title": "Compile and load file",
@@ -228,6 +234,11 @@
         "command": "olive.newlineAndIndent",
         "key": "enter",
         "when": "editorTextFocus && editorLangId == 'common-lisp' && !editorTabMovesFocus && !suggestWidgetVisible && !inSnippetMode && !inlineSuggestionVisible"
+      },
+      {
+        "command": "olive.replGoToDefinition",
+        "key": "f12",
+        "when": "olive.replView.active"
       },
       {
         "command": "olive.macrostep",
@@ -359,6 +370,11 @@
         }
       ],
       "webview/context": [
+        {
+          "command": "olive.replGoToDefinition",
+          "when": "webviewId == 'olive.replView'",
+          "group": "navigation"
+        },
         {
           "command": "olive.syncRepl",
           "when": "webviewId == 'olive.replView'",

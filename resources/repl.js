@@ -53,6 +53,19 @@ window.onmessage = e => {
         case 'disconnect':
             if (currentInput) currentInput.disabled = true;
             break;
+        case 'getSymbol':
+            if (currentInput) {
+                const text = currentInput.value, cursor = currentInput.selectionStart;
+                const before = text.slice(0, cursor), m1 = before.match(/([^\s()\"#;,`']*)$/);
+                const after = text.slice(cursor), m2 = after.match(/^([^\s()\"#;,`']*)/);
+                const symbol = (m1 ? before.slice(-m1[1].length) : '') +
+                    (m2 ? after.slice(0, m2[1].length) : '');
+                vscode.postMessage({ command: 'getSymbolResult', symbol });
+            }
+            else {
+                vscode.postMessage({ command: 'getSymbolResult', symbol: '' });
+            }
+            break;
     }
 };
 
