@@ -262,8 +262,9 @@ function applyCompletion(it) {
     const text = currentInput.value, cursor = currentInput.selectionStart;
     const before = text.slice(0, cursor), m = before.match(/([^\s()\"#;,`']+)$/);
     if (m) {
-        const after = text.slice(cursor), newBefore = before.slice(0, -m[1].length) + it;
-        currentInput.value = newBefore + after;
+        const after = text.slice(cursor), m2 = after.match(/^([^\s()\"#;,`']*)/);
+        const newBefore = before.slice(0, -m[1].length) + it;
+        currentInput.value = newBefore + (m2 ? after.slice(m2[1].length) : after);
         currentInput.selectionStart = currentInput.selectionEnd = newBefore.length;
     }
     hideCompletions();
