@@ -160,11 +160,6 @@
         "title": "Indent Line"
       },
       {
-        "command": "olive.newlineAndIndent",
-        "category": "OLIVE",
-        "title": "Newline and Indent"
-      },
-      {
         "command": "olive.macrostep",
         "category": "OLIVE",
         "title": "Expand Macro"
@@ -228,11 +223,6 @@
       {
         "command": "olive.indentLine",
         "key": "tab",
-        "when": "editorTextFocus && editorLangId == 'common-lisp' && !editorTabMovesFocus && !suggestWidgetVisible && !inSnippetMode && !inlineSuggestionVisible"
-      },
-      {
-        "command": "olive.newlineAndIndent",
-        "key": "enter",
         "when": "editorTextFocus && editorLangId == 'common-lisp' && !editorTabMovesFocus && !suggestWidgetVisible && !inSnippetMode && !inlineSuggestionVisible"
       },
       {
@@ -302,6 +292,11 @@
           "default": 600,
           "description": "Delay in milliseconds to trigger double click action in the macro stepper. Set to a negative value to disable double click action."
         }
+      }
+    },
+    "configurationDefaults": {
+      "[common-lisp]": {
+        "editor.formatOnType": true
       }
     },
     "menus": {

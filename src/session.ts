@@ -18,7 +18,7 @@ const evalDecorationType = vscode.window.createTextEditorDecorationType({
     isWholeLine: true
 })
 
-export class LispSession implements vscode.DocumentFormattingEditProvider, vscode.DocumentRangeFormattingEditProvider, vscode.CompletionItemProvider, vscode.HoverProvider, vscode.DefinitionProvider, vscode.ReferenceProvider, vscode.SignatureHelpProvider {
+export class LispSession implements vscode.DocumentFormattingEditProvider, vscode.DocumentRangeFormattingEditProvider, vscode.OnTypeFormattingEditProvider, vscode.CompletionItemProvider, vscode.HoverProvider, vscode.DefinitionProvider, vscode.ReferenceProvider, vscode.SignatureHelpProvider {
     public client: any;
     public clientReady: Boolean = false;
     private lispProcess: cp.ChildProcess | undefined;
@@ -63,8 +63,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             vscode.commands.registerTextEditorCommand('olive.evalLastExpression', (editor, edit) => this.evalLastExpression(editor, edit)),
             vscode.commands.registerTextEditorCommand('olive.evalDefun', (editor, edit) => this.evalDefun(editor, edit)),
             vscode.commands.registerCommand('olive.loadWorkspaceSystem', () => this.loadWorkspaceSystem()),
-            vscode.commands.registerTextEditorCommand('olive.indentLine', (editor, edit) => this.indentLine(editor, edit)),
-            vscode.commands.registerTextEditorCommand('olive.newlineAndIndent', (editor, edit) => this.newlineAndIndent(editor, edit)));
+            vscode.commands.registerTextEditorCommand('olive.indentLine', (editor, edit) => this.indentLine(editor, edit)));
     }
 
     public checkClient() {
@@ -544,12 +543,10 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         }
     }
 
-    public newlineAndIndent(editor: vscode.TextEditor, edit: vscode.TextEditorEdit) {
-        const doc = editor.document, pos = editor.selection.active;
-        const text = doc.getText();
+    provideOnTypeFormattingEdits(doc: vscode.TextDocument, pos: vscode.Position): vscode.TextEdit[] {
         const pkg = searchBufferPackage(doc, pos);
-        const indentVal = indent.getExpectedIndent(text, doc.offsetAt(pos), pkg, this.systemSpecs);
-        edit.replace(editor.selection, '\n' + ' '.repeat(indentVal));
+        const indentVal = indent.getExpectedIndent(doc.getText(), doc.offsetAt(pos), pkg, this.systemSpecs);
+        return [vscode.TextEdit.insert(pos, ' '.repeat(indentVal))];
     }
 
     provideDocumentFormattingEdits(doc: vscode.TextDocument) {
