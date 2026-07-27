@@ -427,6 +427,7 @@
     "fetch-slime": "curl -L https://github.com/slime/slime/archive/refs/tags/v2.32.tar.gz | tar xz && rm -rf slime && mv slime-2.32 slime",
     "bundle-watch": "npm run bundle -- --watch",
     "lint": "eslint src --ext ts",
+    "pretest": "npm run compile",
     "test": "vscode-test"
   },
   "devDependencies": {
