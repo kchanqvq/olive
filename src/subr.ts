@@ -251,14 +251,17 @@ export function formatAutodocRawForm(text: string, offset: number, node: any): s
 }
 
 export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, direction: 'prev' | 'next', ast?: any): vscode.Range | undefined {
-    const offset = doc.offsetAt(pos);
-    if (!ast) ast = paredit.parse(doc.getText());
+    const offset = doc.offsetAt(pos), text = doc.getText();
+    if (!ast) ast = paredit.parse(text);
     const nodes = paredit.walk.sexpsAt(ast, offset);
     let node = nodes.findLast((n: any) => n.type !== 'toplevel' && n.type !== 'list' && n.type !== 'error' && n.type !== 'comment');
     if (!node) {
         node = (direction === 'prev' ? paredit.walk.prevSexp : paredit.walk.nextSexp)(ast, offset, (n: any) => n.type !== 'comment');
     }
-    if (node) return new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));
+    if (!node) return;
+    let start = node.start;
+    while (start > 0 && /['`#,@]/.test(text[start - 1])) start--;
+    return new vscode.Range(doc.positionAt(start), doc.positionAt(node.end));
 }
 
 // Before or surrounding POS
