@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { LispSession } from './session';
-import { OliveDocumentProvider, searchBufferPackage, getTopLevelForm } from './subr';
+import { OliveDocumentProvider, searchBufferPackage, getAst, getTopLevelForm } from './subr';
 const { util } = require('swank-client');
 const paredit = require('paredit.js');
 
@@ -63,7 +63,7 @@ export async function macrostepExpand(session: LispSession, editor: vscode.TextE
     const pkg = searchBufferPackage(doc, pos);
 
     const text = doc.getText();
-    const ast = paredit.parse(text);
+    const ast = getAst(doc);
     const offset = doc.offsetAt(pos);
     const nodes = paredit.walk.sexpsAt(ast, offset);
 
@@ -76,7 +76,7 @@ export async function macrostepExpand(session: LispSession, editor: vscode.TextE
     }
 
     const range = new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));
-    const topRange = getTopLevelForm(doc, range.start, ast);
+    const topRange = getTopLevelForm(doc, range.start);
     const form = doc.getText(range);
     const context = topRange ?
         `'(${doc.getText(new vscode.Range(topRange.start, range.start))} ${doc.getText(new vscode.Range(range.end, topRange.end))})`

@@ -5,11 +5,10 @@ import * as path from 'path';
 import * as os from 'os';
 import { ReplView } from './replView';
 import { DebugView } from './debugView';
-import { plistGet, severityOrder, convertCompilerNote, searchBufferPackage, getSymbol, getExpression, getTopLevelForm,
+import { plistGet, severityOrder, convertCompilerNote, searchBufferPackage, getSymbol, getAst, getExpression, getTopLevelForm,
     convertCompletionItem, convertLocation, convertDescribeSymbol, convertIndentSpec, formatAutodocRawForm } from './subr';
 import * as indent from './indent';
 const { Client, util } = require('swank-client');
-const paredit = require('paredit.js');
 
 const evalResultDecorationType = vscode.window.createTextEditorDecorationType({
     after: {margin: '0 0 0 2em',
@@ -550,7 +549,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         const line = doc.lineAt(lineIdx);
         if (line.isEmptyOrWhitespace) return;
         const pkg = searchBufferPackage(doc, new vscode.Position(lineIdx, 0));
-        const text = doc.getText(), ast = paredit.parse(text);
+        const text = doc.getText(), ast = getAst(doc);
         const offset = doc.offsetAt(new vscode.Position(lineIdx, line.firstNonWhitespaceCharacterIndex));
         const desired = indent.getExpectedIndent(text, offset, pkg, this.systemSpecs, ast);
         const actual = line.firstNonWhitespaceCharacterIndex;
@@ -563,7 +562,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         const doc = editor.document, pos = editor.selection.active;
         const text = doc.getText();
         const pkg = searchBufferPackage(doc, pos);
-        const indentVal = indent.getExpectedIndent(text, doc.offsetAt(pos), pkg, this.systemSpecs);
+        const indentVal = indent.getExpectedIndent(text, doc.offsetAt(pos), pkg, this.systemSpecs, getAst(doc));
         edit.replace(editor.selection, '\n' + ' '.repeat(indentVal));
     }
 
@@ -572,7 +571,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
     }
 
     provideDocumentRangeFormattingEdits(doc: vscode.TextDocument, range: vscode.Range) {
-        const text = doc.getText(), ast = paredit.parse(text), edits: vscode.TextEdit[] = [];
+        const text = doc.getText(), ast = getAst(doc), edits: vscode.TextEdit[] = [];
         const pkg = searchBufferPackage(doc, range.start);
         for (let i = range.start.line; i <= range.end.line; i++) {
             const line = doc.lineAt(i);
@@ -667,7 +666,7 @@ ${util.to_lisp_string(symbol)})`
         if (!this.clientReady) return;
 
         const pkg = searchBufferPackage(doc, pos);
-        const text = doc.getText(), offset = doc.offsetAt(pos), ast = paredit.parse(text);
+        const text = doc.getText(), offset = doc.offsetAt(pos), ast = getAst(doc);
         const topLevelNode = ast.children.find((child: any) => offset >= child.start && offset <= child.end);
 
         const rawForm = formatAutodocRawForm(text, offset, topLevelNode);

@@ -250,9 +250,19 @@ export function formatAutodocRawForm(text: string, offset: number, node: any): s
     return '(' + parts.join(' ') + ')';
 }
 
-export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, direction: 'prev' | 'next', ast?: any): vscode.Range | undefined {
+const astCache = new WeakMap<vscode.TextDocument, { version: number, ast: any }>();
+
+export function getAst(doc: vscode.TextDocument): any {
+    const cached = astCache.get(doc);
+    if (cached && cached.version === doc.version) return cached.ast;
+    const ast = paredit.parse(doc.getText());
+    astCache.set(doc, { version: doc.version, ast });
+    return ast;
+}
+
+export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, direction: 'prev' | 'next'): vscode.Range | undefined {
     const offset = doc.offsetAt(pos), text = doc.getText();
-    if (!ast) ast = paredit.parse(text);
+    const ast = getAst(doc);
     const nodes = paredit.walk.sexpsAt(ast, offset);
     let node = nodes.findLast((n: any) => n.type !== 'toplevel' && n.type !== 'list' && n.type !== 'error' && n.type !== 'comment');
     if (!node) {
@@ -265,9 +275,9 @@ export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, di
 }
 
 // Before or surrounding POS
-export function getTopLevelForm(doc: vscode.TextDocument, pos: vscode.Position, ast?: any): vscode.Range | undefined {
+export function getTopLevelForm(doc: vscode.TextDocument, pos: vscode.Position): vscode.Range | undefined {
     const offset = doc.offsetAt(pos);
-    if (!ast) ast = paredit.parse(doc.getText());
+    const ast = getAst(doc);
     const node = ast.children.find((child: any) => offset >= child.start && offset <= child.end)
         || ast.children.findLast((child: any) => offset > child.end);
     if (node) return new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));
