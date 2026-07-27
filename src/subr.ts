@@ -260,6 +260,13 @@ export function getAst(doc: vscode.TextDocument): any {
     return ast;
 }
 
+export function getNodeRange(doc: vscode.TextDocument, node: any): vscode.Range | undefined {
+    if (!node) return;
+    let start = node.start, text = doc.getText();
+    while (start > 0 && /['`#,@]/.test(text[start - 1])) start--;
+    return new vscode.Range(doc.positionAt(start), doc.positionAt(node.end));
+}
+
 export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, direction: 'prev' | 'next'): vscode.Range | undefined {
     const offset = doc.offsetAt(pos), text = doc.getText();
     const ast = getAst(doc);
@@ -268,10 +275,7 @@ export function getExpression(doc: vscode.TextDocument, pos: vscode.Position, di
     if (!node) {
         node = (direction === 'prev' ? paredit.walk.prevSexp : paredit.walk.nextSexp)(ast, offset, (n: any) => n.type !== 'comment');
     }
-    if (!node) return;
-    let start = node.start;
-    while (start > 0 && /['`#,@]/.test(text[start - 1])) start--;
-    return new vscode.Range(doc.positionAt(start), doc.positionAt(node.end));
+    return getNodeRange(doc, node);
 }
 
 // Before or surrounding POS
@@ -280,7 +284,7 @@ export function getTopLevelForm(doc: vscode.TextDocument, pos: vscode.Position):
     const ast = getAst(doc);
     const node = ast.children.find((child: any) => offset >= child.start && offset <= child.end)
         || ast.children.findLast((child: any) => offset > child.end);
-    if (node) return new vscode.Range(doc.positionAt(node.start), doc.positionAt(node.end));
+    return getNodeRange(doc, node);
 }
 
 export class OliveDocumentProvider implements vscode.TextDocumentContentProvider {
