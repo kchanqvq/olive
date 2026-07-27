@@ -287,6 +287,11 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             const info = await this.client.initialize();
             await this.client.rex("(SWANK:SWANK-REQUIRE '(SWANK-IO-PACKAGE::SWANK-MACROSTEP SWANK-IO-PACKAGE::SWANK-INDENTATION))",
                 'COMMON-LISP-USER', 'T');
+            // SWANK's initial indentation scan races with loading
+            // SWANK-INDENTATION above, and it only rescans when a new package
+            // appears, so we can be stuck with swank.lisp's cruder specs. Force
+            // rescan.
+            await this.client.rex('(SWANK:UPDATE-INDENTATION-INFORMATION)', 'COMMON-LISP-USER', 'T');
 
             this.clientReady = true;
             this.statusConnected();
