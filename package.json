@@ -291,6 +291,11 @@
           "type": "number",
           "default": 600,
           "description": "Delay in milliseconds to trigger double click action in the macro stepper. Set to a negative value to disable double click action."
+        },
+        "olive.evalFlashDuration": {
+          "type": "number",
+          "default": 200,
+          "description": "Duration in milliseconds to flash the evaluated or compiled region. Set to 0 to disable flash."
         }
       }
     },

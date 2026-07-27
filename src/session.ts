@@ -11,11 +11,15 @@ import * as indent from './indent';
 const { Client, util } = require('swank-client');
 const paredit = require('paredit.js');
 
-const evalDecorationType = vscode.window.createTextEditorDecorationType({
+const evalResultDecorationType = vscode.window.createTextEditorDecorationType({
     after: {margin: '0 0 0 2em',
         color: new vscode.ThemeColor('editorCodeLens.foreground')},
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen,
     isWholeLine: true
+})
+
+const evalFlashDecorationType = vscode.window.createTextEditorDecorationType({
+    backgroundColor: new vscode.ThemeColor('editor.selectionBackground')
 })
 
 export class LispSession implements vscode.DocumentFormattingEditProvider, vscode.DocumentRangeFormattingEditProvider, vscode.OnTypeFormattingEditProvider, vscode.CompletionItemProvider, vscode.HoverProvider, vscode.DefinitionProvider, vscode.ReferenceProvider, vscode.SignatureHelpProvider {
@@ -44,7 +48,7 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         ctx.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => {
             const editor = vscode.window.activeTextEditor;
             if (editor && e.document === editor.document) {
-                editor.setDecorations(evalDecorationType, []);
+                editor.setDecorations(evalResultDecorationType, []);
             }
         }));
 
@@ -430,11 +434,20 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         });
     }
 
+    private flashRegion(editor: vscode.TextEditor, range?: vscode.Range) {
+        const duration = vscode.workspace.getConfiguration('olive').get('evalFlashDuration', 200);
+        if (duration > 0 && range) {
+            editor.setDecorations(evalFlashDecorationType, [range]);
+            setTimeout(() => editor.setDecorations(evalFlashDecorationType, []), duration);
+        }
+    }
+
     public async compileDefun(editor: vscode.TextEditor, edit: vscode.TextEditorEdit, policy: string = 'NIL') {
         if (!this.checkClient()) return;
 
         const doc = editor.document, pos = editor.selection.active;
         const range = getTopLevelForm(doc, pos);
+        this.flashRegion(editor, range);
         if (range) await this.compileRegion(doc, range, policy);
         else vscode.window.showErrorMessage('No top level form at or before the selection.')
     }
@@ -444,12 +457,12 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
         const pkg = searchBufferPackage(doc, range.start);
         const code = doc.getText(range);
 
-        editor.setDecorations(evalDecorationType, []);
+        editor.setDecorations(evalResultDecorationType, []);
         const res = await this.client.rex(`(SWANK:INTERACTIVE-EVAL ${util.to_lisp_string(code)} 1 40)`, pkg, 'T');
         const resultStr = util.from_lisp_string(res);
         const lineEnd = doc.lineAt(range.end.line).range.end;
 
-        editor.setDecorations(evalDecorationType, [{
+        editor.setDecorations(evalResultDecorationType, [{
             range: new vscode.Range(lineEnd, lineEnd),
             renderOptions: { after: { contentText: '; ' + resultStr } }
         }]);
@@ -461,6 +474,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
 
         const doc = editor.document, pos = editor.selection.active;
         const range = getExpression(doc, pos, 'prev');
+        this.flashRegion(editor, range);
         if (range) await this.evalRegion(editor, range);
         else vscode.window.showErrorMessage('No expression at or before the selection.')
     }
@@ -470,6 +484,7 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
 
         const doc = editor.document, pos = editor.selection.active;
         const range = getTopLevelForm(doc, pos);
+        this.flashRegion(editor, range);
         if (range) await this.evalRegion(editor, range);
         else vscode.window.showErrorMessage('No expression at or before the selection.')
     }
