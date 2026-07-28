@@ -4,6 +4,7 @@ import { ReplView } from './replView';
 import { LispSession } from './session';
 import { OliveDocumentProvider } from './subr';
 import { macrostepExpand, macrostepCollapse, macrostepClick } from './macrostep';
+import { EditProvider } from './edit';
 
 let session: LispSession;
 
@@ -25,6 +26,8 @@ export function activate(ctx: vscode.ExtensionContext) {
         vscode.commands.registerTextEditorCommand('olive.macrostep', (editor) => macrostepExpand(session, editor)),
         vscode.commands.registerTextEditorCommand('olive.macrostepCollapse', (editor) => macrostepCollapse(editor)),
     );
+
+    new EditProvider(ctx);
 
     const selector: vscode.DocumentSelector = { language: 'common-lisp' };
     ctx.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, session, ':', '*', '+'));

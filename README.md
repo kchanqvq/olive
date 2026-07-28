@@ -14,6 +14,15 @@ You will quite often have the debugger popped up. `ABORT` is bound to key `A` an
 
 OLIVE automatically starts a Lisp process when it is activated, this behavior can be disabled with the `olive.autostart` configuration. Note that many functionalities (accurate indentation, go to definition, hover...) rely on a running Lisp process.
 
+## Structural Editing
+
+This is one of the essential and unique feature of Lisp environments. The built-in structural editing functionalities of OLIVE is still under development and I aim to support basic operations first. If you wish to use another structural editing plugin, you can disable it with the `olive.structuralEditing` configuration. The key bindings are generally the same as other Paredit ports on VSCode. What is currently implemented:
+
+- Navigation: Backward Sexp (`Ctrl+Left` win/linux `Alt+Left` mac), Forward Sexp (`Ctrl/Alt+Right`), Forward Down Sexp (`Ctrl/Alt+Down`), Backward Up Sexp (`Ctrl/Alt+Up`), Forward Up Sexp (`Ctrl+Alt+Down`).
+- Selection: When holding down `Shift`, the navigation commands become selection commands that move selection.
+- Strict Mode: Enabled by default, configure via `olive.strictMode`.
+- Editing: TODO
+
 ## Loading Files and Systems
 
 The play button (also key `F5`) on the top right of the editor window compiles and loads the current file. This compiles with default settings, which has good performance and is already debuggable. More options are available in the drop down menu next to it: High debug settings (also key `Shift+F5`), if you hate some compiler optimizations (variable elimination, stack frame elision...); Load directly (also key `Alt+F5`), this one is equivalent to entering forms in the file into REPL one by one, generally more useful for scripting.

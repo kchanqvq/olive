@@ -2,7 +2,7 @@
   "name": "olive",
   "displayName": "OLIVE",
   "description": "A SLIME-style Common Lisp IDE",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "publisher": "kchanqvq",
   "repository": "github:kchanqvq/olive",
   "engines": {
@@ -165,6 +165,48 @@
         "title": "Newline and Indent"
       },
       {
+        "command": "olive.forwardSexp",
+        "category": "OLIVE",
+        "title": "Forward Expression",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.backwardSexp",
+        "category": "OLIVE",
+        "title": "Backward Expression",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.downList",
+        "category": "OLIVE",
+        "title": "Move Into List",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.backwardUpList",
+        "category": "OLIVE",
+        "title": "Move Backward Out of List",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.forwardUpList",
+        "category": "OLIVE",
+        "title": "Move Forward Out of List",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.forwardDelete",
+        "category": "OLIVE",
+        "title": "Delete Forward",
+        "enablement": "config.olive.structuralEditing && config.olive.strictMode"
+      },
+      {
+        "command": "olive.backwardDelete",
+        "category": "OLIVE",
+        "title": "Delete Backward",
+        "enablement": "config.olive.structuralEditing && config.olive.strictMode"
+      },
+      {
         "command": "olive.macrostep",
         "category": "OLIVE",
         "title": "Expand Macro"
@@ -234,6 +276,75 @@
         "command": "olive.newlineAndIndent",
         "key": "enter",
         "when": "editorTextFocus && editorLangId == 'common-lisp' && !editorTabMovesFocus && !suggestWidgetVisible && !inSnippetMode && !inlineSuggestionVisible"
+      },
+      {
+        "command": "olive.forwardSexp",
+        "key": "ctrl+right",
+        "mac": "alt+right",
+        "when": "config.olive.structuralEditing && editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.forwardSexp",
+        "args": { "select": true },
+        "key": "ctrl+shift+right",
+        "mac": "shift+alt+right",
+        "when": "config.olive.structuralEditing && editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.backwardSexp",
+        "key": "ctrl+left",
+        "mac": "alt+left",
+        "when": "config.olive.structuralEditing && editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.backwardSexp",
+        "args": { "select": true },
+        "key": "ctrl+shift+left",
+        "mac": "shift+alt+left",
+        "when": "config.olive.structuralEditing && editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.downList",
+        "key": "ctrl+down",
+        "when": "config.olive.structuralEditing && editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.downList",
+        "args": { "select": true },
+        "key": "ctrl+shift+down",
+        "when": "config.olive.structuralEditing && editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.backwardUpList",
+        "key": "ctrl+up",
+        "when": "config.olive.structuralEditing && editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.backwardUpList",
+        "args": { "select": true },
+        "key": "ctrl+shift+up",
+        "when": "config.olive.structuralEditing && editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.forwardUpList",
+        "key": "ctrl+alt+down",
+        "when": "config.olive.structuralEditing && editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.forwardUpList",
+        "args": { "select": true },
+        "key": "ctrl+shift+alt+down",
+        "when": "config.olive.structuralEditing && editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.forwardDelete",
+        "key": "delete",
+        "when": "config.olive.structuralEditing && config.olive.strictMode && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.backwardDelete",
+        "key": "backspace",
+        "when": "config.olive.structuralEditing && config.olive.strictMode && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
       },
       {
         "command": "olive.replGoToDefinition",
@@ -306,7 +417,24 @@
           "type": "number",
           "default": 200,
           "description": "Duration in milliseconds to flash the evaluated or compiled region. Set to 0 to disable flash."
+        },
+        "olive.structuralEditing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Bind keys for built-in structural editing."
+        },
+        "olive.strictMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Avoid edits that unbalance parenthesis. This overrides some default VSCode commands."
         }
+      }
+    },
+    "configurationDefaults": {
+      "[common-lisp]": {
+        "editor.autoClosingBrackets": "always",
+        "editor.autoClosingQuotes": "always",
+        "editor.autoClosingOvertype": "always"
       }
     },
     "menus": {

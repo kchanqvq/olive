@@ -1,3 +1,68 @@
+diff --git a/node_modules/paredit.js/lib/editor.js b/node_modules/paredit.js/lib/editor.js
+index b574b6e..b05c700 100644
+--- a/node_modules/paredit.js/lib/editor.js
++++ b/node_modules/paredit.js/lib/editor.js
+@@ -386,6 +386,7 @@
+           right = isInList && rightSiblings(parent, idx),
+           noDelete = {changes: [], newIndex: idx},
+           moveLeft = {changes: [], newIndex: idx-1},
++          moveRight = {changes: [], newIndex: idx+1},
+           simpleDelete = {
+             changes: [['remove', backward ? idx-count : idx, count]],
+             newIndex: backward ? idx-count : idx
+@@ -406,6 +407,7 @@
+         var n = right[0];
+         if (n.start !== idx || isSaveToPartialDelete(n)) return simpleDelete;
+         if (isEmpty(n) || n.type === "char") return deleteSexp(n);
++        if (count == 1) return moveRight;
+         return noDelete;
+       }
+ 
+@@ -413,7 +415,8 @@
+ 
+       var atStart = idx === parent.start+(parent.open ? parent.open.length : 0);
+       var atEnd = idx === parent.end-(parent.close ? parent.close.length : 0);
+-      if ((!parent.children || !parent.children.length)
++      // a string has no children, empty or not
++      if ((isInList ? !parent.children || !parent.children.length : isEmpty(parent))
+        && ((atStart && backward) || (atEnd && !backward))) {
+         return deleteSexp(parent);
+       }
+diff --git a/node_modules/paredit.js/lib/navigator.js b/node_modules/paredit.js/lib/navigator.js
+index 8c928ad..bad7a4b 100644
+--- a/node_modules/paredit.js/lib/navigator.js
++++ b/node_modules/paredit.js/lib/navigator.js
+@@ -19,15 +19,26 @@
+         function(n) { return !w.hasChildren(n); }));
+       if (current) return current.end;
+       var next = w.nextSexp(ast, idx);
+-      return next ? next.end : idx;
++      if (!next) return idx;
++      // skip special nodes
++      var adjacent;
++      while (next.type === 'special'
++             && (adjacent = w.nextSexp(ast, next.end)) && adjacent.start === next.end)
++        next = adjacent;
++      return next.end;
+     },
+ 
+     backwardSexp: function(ast, idx) {
+       var current = last(w.containingSexpsAt(ast,idx,
+         function(n) { return !w.hasChildren(n); }));
+-      if (current) return current.start;
+-      var prev = w.prevSexp(ast, idx);
+-      return prev ? prev.start : idx;
++      var prev = current || w.prevSexp(ast, idx);
++      if (!prev) return idx;
++      // skip special nodes
++      var adjacent;
++      while ((adjacent = w.prevSexp(ast, prev.start))
++             && adjacent.type === 'special' && adjacent.end === prev.start)
++        prev = adjacent;
++      return prev.start;
+     },
+ 
+     forwardDownSexp: function(ast, idx) {
 diff --git a/node_modules/paredit.js/lib/reader.js b/node_modules/paredit.js/lib/reader.js
 index 55b47ed..f4fcdb4 100644
 --- a/node_modules/paredit.js/lib/reader.js
