@@ -16,12 +16,12 @@ OLIVE automatically starts a Lisp process when it is activated, this behavior ca
 
 ## Structural Editing
 
-This is one of the essential and unique feature of Lisp environments. The built-in structural editing functionalities of OLIVE is still under development and I aim to support basic operations first. If you wish to use another structural editing plugin, you can disable it with the `olive.structuralEditing` configuration. The key bindings are generally the same as other Paredit ports on VSCode. What is currently implemented:
+This is one of the essential and unique feature of Lisp environments. The built-in structural editing functionalities of OLIVE aims to support basic operations first. If you wish to use another structural editing plugin, you can disable it with the `olive.structuralEditing` configuration. The key bindings are generally similiar to other Paredit ports on VSCode. What is currently implemented:
 
-- Navigation: Backward Sexp (`Ctrl+Left` win/linux `Alt+Left` mac), Forward Sexp (`Ctrl/Alt+Right`), Forward Down Sexp (`Ctrl/Alt+Down`), Backward Up Sexp (`Ctrl/Alt+Up`), Forward Up Sexp (`Ctrl+Alt+Down`).
+- Navigation: Backward Sexp (`Ctrl+Left` win/linux `Alt+Left` mac), Forward Sexp (`Ctrl/Alt+Right`), Forward Down Sexp (`Ctrl+Down`), Backward Up Sexp (`Ctrl+Up`), Forward Up Sexp (`Ctrl+Alt+Down`).
 - Selection: When holding down `Shift`, the navigation commands become selection commands that move selection.
 - Strict Mode: Enabled by default, configure via `olive.strictMode`.
-- Editing: TODO
+- Editing: Slurp Forward (`Ctrl+Alt+Right` win/mac `Ctrl+Alt+.` linux), Barf Forward (`Ctrl+Alt+Left` win/mac `Ctrl+Alt+,` linux), Slurp Backward (`Ctrl+Alt+Shift+Left`), Barf Backward (`Ctrl+Alt+Shift+Right`), Splice Sexp (`Ctrl+Alt+S`), Split Sexp (`Ctrl+Shift+S`), Wrap `()` Around (`Ctrl+Alt+P`), Raise Sexp (`Ctrl+Alt+R`), Forward Kill Sexp (`Ctrl+Delete` win/linux `Alt+Delete` mac), Backward Kill Sexp (`Ctrl/Alt+Backspace`), Forward Splice Kill (`Ctrl+Alt+Shift+Delete`), Backward Splice Kill (`Ctrl+Alt+Shift+Backspace`).
 
 ## Loading Files and Systems
 

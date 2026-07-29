@@ -1,7 +1,16 @@
 diff --git a/node_modules/paredit.js/lib/editor.js b/node_modules/paredit.js/lib/editor.js
-index b574b6e..b05c700 100644
+index b574b6e..4725b4f 100644
 --- a/node_modules/paredit.js/lib/editor.js
 +++ b/node_modules/paredit.js/lib/editor.js
+@@ -240,7 +240,7 @@
+       var sexps = w.containingSexpsAt(ast,idx, w.hasChildren);
+       if (!sexps.length) return null;
+       var parent = last(sexps);
+-      var sexpsToWrap = parent.children.filter(function(c) {
++      var sexpsToWrap = wholeSexps(parent, parent.children).filter(function(c) {
+         return c.start >= idx; }).slice(0,count);
+       var end = last(sexpsToWrap);
+       var changes = [
 @@ -386,6 +386,7 @@
            right = isInList && rightSiblings(parent, idx),
            noDelete = {changes: [], newIndex: idx},
@@ -10,10 +19,21 @@ index b574b6e..b05c700 100644
            simpleDelete = {
              changes: [['remove', backward ? idx-count : idx, count]],
              newIndex: backward ? idx-count : idx
-@@ -406,6 +407,7 @@
+@@ -397,7 +398,7 @@
+       if (left && left.length && backward) {
+         var n = last(left);
+         if (n.end !== idx || isSaveToPartialDelete(n)) return simpleDelete;
+-        if (isEmpty(n) || n.type === "char") return deleteSexp(n);
++        if (n.type === "char") return deleteSexp(n);
+         if (count == 1) return moveLeft;
+         return noDelete;
+       }
+@@ -405,7 +406,8 @@
+       if (right && right.length && !backward) {
          var n = right[0];
          if (n.start !== idx || isSaveToPartialDelete(n)) return simpleDelete;
-         if (isEmpty(n) || n.type === "char") return deleteSexp(n);
+-        if (isEmpty(n) || n.type === "char") return deleteSexp(n);
++        if (n.type === "char") return deleteSexp(n);
 +        if (count == 1) return moveRight;
          return noDelete;
        }
@@ -28,22 +48,43 @@ index b574b6e..b05c700 100644
         && ((atStart && backward) || (atEnd && !backward))) {
          return deleteSexp(parent);
        }
+@@ -544,14 +547,22 @@
+       }, function(n) { return n.children; });
+   }
+ 
++  // Reader prefixes are nodes of their own; make them part of the form they
++  // belong to, so that siblings are whole forms.
++  function wholeSexps(parentNode, nodes) {
++    return nodes.filter(function(n) { return n.type !== 'special'; })
++      .map(function(n) {
++        return util.merge(n, {start: w.skipSpecials(parentNode, n, true)}); });
++  }
++
+   function leftSiblings(parentNode, idx) {
+-    return parentNode.children.filter(function(n) {
+-      return n.end <= idx; });
++    return wholeSexps(parentNode, parentNode.children.filter(function(n) {
++      return n.end <= idx; }));
+   }
+ 
+   function rightSiblings(parentNode, idx) {
+-    return parentNode.children.filter(function(n) {
+-      return idx <= n.start; });
++    return wholeSexps(parentNode, parentNode.children.filter(function(n) {
++      return idx <= n.start; }));
+   }
+ 
+   function isSpecialForm(parentSexp, src) {
 diff --git a/node_modules/paredit.js/lib/navigator.js b/node_modules/paredit.js/lib/navigator.js
-index 8c928ad..bad7a4b 100644
+index 8c928ad..a44da1d 100644
 --- a/node_modules/paredit.js/lib/navigator.js
 +++ b/node_modules/paredit.js/lib/navigator.js
-@@ -19,15 +19,26 @@
+@@ -19,15 +19,14 @@
          function(n) { return !w.hasChildren(n); }));
        if (current) return current.end;
        var next = w.nextSexp(ast, idx);
 -      return next ? next.end : idx;
-+      if (!next) return idx;
-+      // skip special nodes
-+      var adjacent;
-+      while (next.type === 'special'
-+             && (adjacent = w.nextSexp(ast, next.end)) && adjacent.start === next.end)
-+        next = adjacent;
-+      return next.end;
++      return next ? w.skipSpecials(ast, next) : idx;
      },
  
      backwardSexp: function(ast, idx) {
@@ -53,16 +94,33 @@ index 8c928ad..bad7a4b 100644
 -      var prev = w.prevSexp(ast, idx);
 -      return prev ? prev.start : idx;
 +      var prev = current || w.prevSexp(ast, idx);
-+      if (!prev) return idx;
-+      // skip special nodes
-+      var adjacent;
-+      while ((adjacent = w.prevSexp(ast, prev.start))
-+             && adjacent.type === 'special' && adjacent.end === prev.start)
-+        prev = adjacent;
-+      return prev.start;
++      return prev ? w.skipSpecials(ast, prev, true) : idx;
      },
  
      forwardDownSexp: function(ast, idx) {
+@@ -130,6 +129,22 @@
+       }, getChildren);
+     },
+ 
++    // Reader prefixes are read as nodes of their own; skip from a prefix to
++    // the end of the form it belongs to, or from a form back to the start of
++    // its prefixes.
++    skipSpecials: function(ast, node, backward) {
++      var adjacent;
++      if (backward)
++        while ((adjacent = w.prevSexp(ast, node.start))
++               && adjacent.type === 'special' && adjacent.end === node.start)
++          node = adjacent;
++      else
++        while (node.type === 'special'
++               && (adjacent = w.nextSexp(ast, node.end)) && adjacent.start === node.end)
++          node = adjacent;
++      return backward ? node.start : node.end;
++    },
++
+     sexpsAt: function(ast, idx, matchFunc) {
+       return util.flatFilterTree(ast, function(n) {
+         return n.start <= idx && idx <= n.end && (!matchFunc || matchFunc(n));
 diff --git a/node_modules/paredit.js/lib/reader.js b/node_modules/paredit.js/lib/reader.js
 index 55b47ed..f4fcdb4 100644
 --- a/node_modules/paredit.js/lib/reader.js

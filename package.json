@@ -195,6 +195,84 @@
         "enablement": "config.olive.structuralEditing"
       },
       {
+        "command": "olive.forwardSlurp",
+        "category": "OLIVE",
+        "title": "Slurp Forward",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.backwardSlurp",
+        "category": "OLIVE",
+        "title": "Slurp Backward",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.forwardBarf",
+        "category": "OLIVE",
+        "title": "Barf Forward",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.backwardBarf",
+        "category": "OLIVE",
+        "title": "Barf Backward",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.spliceSexp",
+        "category": "OLIVE",
+        "title": "Splice Expression",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.splitSexp",
+        "category": "OLIVE",
+        "title": "Split Expression",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.wrapAround",
+        "category": "OLIVE",
+        "title": "Wrap Around Parentheses",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.forwardSpliceKill",
+        "category": "OLIVE",
+        "title": "Splice and Kill Forward",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.backwardSpliceKill",
+        "category": "OLIVE",
+        "title": "Splice and Kill Backward",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.raiseSexp",
+        "category": "OLIVE",
+        "title": "Raise Expression",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.forwardKillSexp",
+        "category": "OLIVE",
+        "title": "Kill Expression Forward",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.backwardKillSexp",
+        "category": "OLIVE",
+        "title": "Kill Expression Backward",
+        "enablement": "config.olive.structuralEditing"
+      },
+      {
+        "command": "olive.insertSemicolon",
+        "category": "OLIVE",
+        "title": "Insert Semicolon",
+        "enablement": "config.olive.structuralEditing && config.olive.strictMode"
+      },
+      {
         "command": "olive.forwardDelete",
         "category": "OLIVE",
         "title": "Delete Forward",
@@ -335,6 +413,75 @@
         "args": { "select": true },
         "key": "ctrl+shift+alt+down",
         "when": "config.olive.structuralEditing && editorTextFocus && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.forwardSlurp",
+        "key": "ctrl+alt+right",
+        "linux": "ctrl+alt+.",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.backwardSlurp",
+        "key": "ctrl+alt+shift+left",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.forwardBarf",
+        "key": "ctrl+alt+left",
+        "linux": "ctrl+alt+,",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.backwardBarf",
+        "key": "ctrl+alt+shift+right",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.spliceSexp",
+        "key": "ctrl+alt+s",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.splitSexp",
+        "key": "ctrl+shift+s",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.wrapAround",
+        "key": "ctrl+alt+p",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.forwardSpliceKill",
+        "key": "ctrl+alt+shift+delete",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.backwardSpliceKill",
+        "key": "ctrl+alt+shift+backspace",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.raiseSexp",
+        "key": "ctrl+alt+r",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.forwardKillSexp",
+        "key": "ctrl+delete",
+        "mac": "alt+delete",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.backwardKillSexp",
+        "key": "ctrl+backspace",
+        "mac": "alt+backspace",
+        "when": "config.olive.structuralEditing && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
+      },
+      {
+        "command": "olive.insertSemicolon",
+        "key": ";",
+        "when": "config.olive.structuralEditing && config.olive.strictMode && editorTextFocus && !editorReadonly && editorLangId == 'common-lisp'"
       },
       {
         "command": "olive.forwardDelete",

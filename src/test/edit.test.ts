@@ -96,9 +96,114 @@ describe('Strict delete', () => {
         assert.strictEqual(await afterDelete('(foo "|" bar)', true), '(foo | bar)');
     });
 
+    it('moves into an empty form rather than deleting it from outside', async () => {
+        assert.strictEqual(await afterDelete('(foo ()| bar)', false), '(foo (|) bar)');
+        assert.strictEqual(await afterDelete('(foo |() bar)', true), '(foo (|) bar)');
+        assert.strictEqual(await afterDelete('(foo ""| bar)', false), '(foo "|" bar)');
+        assert.strictEqual(await afterDelete('(foo |"" bar)', true), '(foo "|" bar)');
+    });
+
     it('refuses to delete a delimiter that would unbalance', async () => {
         assert.strictEqual(await afterDelete('(foo|)', true), '(foo|)');
         assert.strictEqual(await afterDelete('(|foo)', false), '(|foo)');
         assert.strictEqual(await afterDelete('("|zot" quux)', false), '("|zot" quux)');
+    });
+});
+
+async function afterCommand(content: string, command: string): Promise<string> {
+    const offset = content.indexOf('|');
+    const doc = await vscode.workspace.openTextDocument(
+        { language: 'common-lisp', content: content.replace('|', '') });
+    const ed = await vscode.window.showTextDocument(doc);
+    const pos = doc.positionAt(offset);
+    ed.selection = new vscode.Selection(pos, pos);
+    await vscode.commands.executeCommand(command);
+    const text = doc.getText(), cursor = doc.offsetAt(ed.selection.active);
+    return text.slice(0, cursor) + '|' + text.slice(cursor);
+}
+
+describe('Structural edits', () => {
+    before(async function() {
+        this.timeout(60000);
+        await vscode.extensions.getExtension('kchanqvq.olive')!.activate();
+    });
+
+    it('slurps', async () => {
+        assert.strictEqual(await afterCommand('(foo (bar|) baz)', 'olive.forwardSlurp'),
+            '(foo (bar| baz))');
+        assert.strictEqual(await afterCommand('(foo (|bar) baz)', 'olive.backwardSlurp'),
+            '((foo |bar) baz)');
+    });
+
+    it('barfs', async () => {
+        assert.strictEqual(await afterCommand('(foo (bar| baz))', 'olive.forwardBarf'),
+            '(foo (bar|) baz)');
+        assert.strictEqual(await afterCommand('((foo |bar) baz)', 'olive.backwardBarf'),
+            '(foo (|bar) baz)');
+    });
+
+    it('splices and splits', async () => {
+        assert.strictEqual(await afterCommand('(foo (bar| baz) quux)', 'olive.spliceSexp'),
+            '(foo bar| baz quux)');
+        assert.strictEqual(await afterCommand('(foo bar| baz)', 'olive.splitSexp'),
+            '(foo bar)| ( baz)');
+    });
+
+    it('treats a reader prefix as part of its form', async () => {
+        assert.strictEqual(await afterCommand("(foo (bar|) 'baz)", 'olive.forwardSlurp'),
+            "(foo (bar| 'baz))");
+        assert.strictEqual(await afterCommand("(foo (bar| 'baz))", 'olive.forwardBarf'),
+            "(foo (bar|) 'baz)");
+        assert.strictEqual(await afterCommand("(foo |'bar baz)", 'olive.wrapAround'),
+            "(foo (|'bar) baz)");
+        assert.strictEqual(await afterCommand("(foo |#'bar baz)", 'olive.forwardKillSexp'),
+            '(foo | baz)');
+    });
+
+    it('wraps and kills', async () => {
+        assert.strictEqual(await afterCommand('(foo |bar baz)', 'olive.wrapAround'),
+            '(foo (|bar) baz)');
+        assert.strictEqual(await afterCommand('(foo |bar baz)', 'olive.forwardKillSexp'),
+            '(foo | baz)');
+    });
+    it('splices and kills', async () => {
+        // paredit.el's M-<up> and M-<down> examples
+        assert.strictEqual(
+            await afterCommand('(foo (let ((x 5)) |(sqrt n)) bar)', 'olive.backwardSpliceKill'),
+            '(foo |(sqrt n) bar)');
+        assert.strictEqual(
+            await afterCommand('(a (b c| d e) f)', 'olive.forwardSpliceKill'), '(a b c| f)');
+    });
+
+    it('breaks the line so a semicolon cannot comment out a delimiter', async () => {
+        const semi = (c: string) => afterCommand(c, 'olive.insertSemicolon');
+        assert.strictEqual(await semi('|(frob grovel)'), ';|(frob grovel)');
+        assert.strictEqual(await semi('(frob |grovel)'), '(frob ;|grovel\n )');
+        assert.strictEqual(await semi('(frob grovel)          |'), '(frob grovel)          ;|');
+        // only the edited range is reindented, so `zargh` keeps its column
+        assert.strictEqual(await semi('(frob |grovel (bloit\n               zargh))'),
+            '(frob ;|grovel\n (bloit\n               zargh))');
+        assert.strictEqual(await semi('(foo "a|b")'), '(foo "a;|b")');
+    });
+
+    it('raises', async () => {
+        // the chain from paredit.el's own M-r example
+        assert.strictEqual(
+            await afterCommand('(dynamic-wind in (lambda () |body) out)', 'olive.raiseSexp'),
+            '(dynamic-wind in |body out)');
+        assert.strictEqual(
+            await afterCommand('(dynamic-wind in |body out)', 'olive.raiseSexp'), '|body');
+        assert.strictEqual(
+            await afterCommand("(foo (bar |'baz) quux)", 'olive.raiseSexp'), "(foo |'baz quux)");
+        // the cursor lands at the start of the raised form, as in Emacs
+        assert.strictEqual(
+            await afterCommand('(foo (bar ba|z) quux)', 'olive.raiseSexp'), '(foo |baz quux)');
+    });
+
+    it('reindents what it moved', async () => {
+        assert.strictEqual(await afterCommand('(foo (bar|)\n     baz)', 'olive.forwardSlurp'),
+            '(foo (bar|\n      baz))');
+        assert.strictEqual(await afterCommand('(foo (bar|\n          baz))', 'olive.forwardBarf'),
+            '(foo (bar|)\n     baz)');
     });
 });

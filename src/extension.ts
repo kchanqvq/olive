@@ -27,7 +27,7 @@ export function activate(ctx: vscode.ExtensionContext) {
         vscode.commands.registerTextEditorCommand('olive.macrostepCollapse', (editor) => macrostepCollapse(editor)),
     );
 
-    new EditProvider(ctx);
+    new EditProvider(ctx, session);
 
     const selector: vscode.DocumentSelector = { language: 'common-lisp' };
     ctx.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, session, ':', '*', '+'));
