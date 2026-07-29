@@ -1,0 +1,19 @@
+.*
+.*/**
+tsconfig.json
+NOTES.org
+
+# Sources; only the bundles in out/ are loaded
+src/**
+out/test/**
+out/**/*.map
+
+# Only needed when installing from source
+patches/**
+
+# Linked from the README as absolute URLs, fetched from the repository
+demo/**
+
+slime/doc/**
+node_modules/**/tests/**
+**/*.~*~
