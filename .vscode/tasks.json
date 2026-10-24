@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-all",
+      "type": "shell",
+      "command": "npm run compile && npm run bundle",
+      "problemMatcher": "$tsc",
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
+}
