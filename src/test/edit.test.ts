@@ -69,7 +69,7 @@ async function afterDelete(content: string, forward: boolean): Promise<string> {
     ed.selection = new vscode.Selection(pos, pos);
     await vscode.commands.executeCommand(forward ? 'olive.forwardDelete' : 'olive.backwardDelete');
     const text = doc.getText(), cursor = doc.offsetAt(ed.selection.active);
-    return text.slice(0, cursor) + '|' + text.slice(cursor);
+    return (text.slice(0, cursor) + '|' + text.slice(cursor)).replace(/\r\n/g, '\n');
 }
 
 describe('Strict delete', () => {
@@ -119,7 +119,7 @@ async function afterCommand(content: string, command: string): Promise<string> {
     ed.selection = new vscode.Selection(pos, pos);
     await vscode.commands.executeCommand(command);
     const text = doc.getText(), cursor = doc.offsetAt(ed.selection.active);
-    return text.slice(0, cursor) + '|' + text.slice(cursor);
+    return (text.slice(0, cursor) + '|' + text.slice(cursor)).replace(/\r\n/g, '\n');
 }
 
 describe('Structural edits', () => {
@@ -178,7 +178,7 @@ describe('Structural edits', () => {
     it('breaks the line so a semicolon cannot comment out a delimiter', async () => {
         const semi = (c: string) => afterCommand(c, 'olive.insertSemicolon');
         assert.strictEqual(await semi('|(frob grovel)'), ';|(frob grovel)');
-        assert.strictEqual(await semi('(frob |grovel)'), '(frob ;|grovel\n )');
+        assert.strictEqual(await semi('(frob |grovel)'), '(frob ;|grovel\n)');
         assert.strictEqual(await semi('(frob grovel)          |'), '(frob grovel)          ;|');
         // only the edited range is reindented, so `zargh` keeps its column
         assert.strictEqual(await semi('(frob |grovel (bloit\n               zargh))'),

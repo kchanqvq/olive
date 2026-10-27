@@ -10,6 +10,20 @@ import { plistGet, severityOrder, convertCompilerNote, searchBufferPackage, getS
 import * as indent from './indent';
 const { Client, util } = require('swank-client');
 
+interface LispResult {
+    type: string;
+    source: string;
+}
+
+function loadResultText(result: LispResult): string {
+    return result.type === 'string' ? util.from_lisp_string(result) : result.source;
+}
+
+function loadSucceeded(result: LispResult): boolean {
+    return (result.type === 'string' || result.type === 'symbol') &&
+        loadResultText(result).toLowerCase() === 't';
+}
+
 const evalResultDecorationType = vscode.window.createTextEditorDecorationType({
     after: {margin: '0 0 0 2em',
         color: new vscode.ThemeColor('editorCodeLens.foreground')},
@@ -25,6 +39,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
     public client: any;
     public clientReady: Boolean = false;
     private lispProcess: cp.ChildProcess | undefined;
+    private lispPort: number | undefined;
+    private lispClient: { process: cp.ChildProcess; client: any } | undefined;
     private lispOutputChannel: vscode.OutputChannel | undefined;
     private statusBarItem: vscode.StatusBarItem;
     private debugViews = new Map<string, DebugView>();
@@ -86,7 +102,9 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             const choice = await vscode.window.showInformationMessage(
                 `A client is already ${this.clientReady ? 'connected' : 'connecting'}. Disconnect it?`, { modal: true }, 'Disconnect');
             if (choice !== 'Disconnect') return false;
-            this.client?.disconnect();
+            const client = this.client;
+            this.clearClient(client);
+            client?.disconnect();
         }
         return true;
     }
@@ -116,6 +134,9 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             if (this.lispProcess) return;
         } else if (!await this.maybeDisconnect()) return;
 
+        this.clientReady = false;
+        this.client = undefined;
+
         if (!this.lispOutputChannel) {
             this.lispOutputChannel = vscode.window.createOutputChannel('Lisp process');
         }
@@ -123,34 +144,39 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         this.lispOutputChannel.show(true);
         this.statusConnecting();
         const portFile = path.join(os.tmpdir(), `olive-port.${process.pid}`);
+        let child: cp.ChildProcess | undefined;
 
         try {
             if (fs.existsSync(portFile)) fs.unlinkSync(portFile);
 
             const swankLoader = path.join(this.ctx.extensionPath, 'slime', 'swank-loader.lisp');
             const lispCode = `
-(LOAD ${JSON.stringify(swankLoader)})
+(LOAD (UIOP:PARSE-NATIVE-NAMESTRING ${util.to_lisp_string(swankLoader)}))
 (SWANK-LOADER:INIT :FROM-EMACS T)
-(SWANK:START-SERVER ${util.to_lisp_string(portFile)})
+(SWANK:START-SERVER ${util.to_lisp_string(portFile)} :DONT-CLOSE T)
 `;
 
-            this.lispProcess = cp.spawn(lispCommand, {
+            const spawnedChild = cp.spawn(lispCommand, {
                 cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || os.homedir(),
                 env: process.env
             });
+            child = spawnedChild;
+            this.lispProcess = spawnedChild;
 
-            this.lispProcess.stdout?.on('data', (data) => this.lispOutputChannel?.append(data.toString()));
-            this.lispProcess.stderr?.on('data', (data) => this.lispOutputChannel?.append(data.toString()));
-            this.lispProcess.on('exit', (code) => {
+            spawnedChild.stdout?.on('data', (data) => this.lispOutputChannel?.append(data.toString()));
+            spawnedChild.stderr?.on('data', (data) => this.lispOutputChannel?.append(data.toString()));
+
+            spawnedChild.on('exit', (code) => {
                 this.lispOutputChannel?.appendLine(`\nLisp process exited with code ${code}`);
-                this.lispProcess = undefined;
-            });
-            this.lispProcess.on('error', (err) => {
-                this.lispOutputChannel?.appendLine(`\n${err}`);
-                this.lispProcess = undefined;
+                this.clearLispProcess(spawnedChild);
             });
 
-            this.lispProcess.stdin?.write(lispCode);
+            spawnedChild.on('error', (err) => {
+                this.lispOutputChannel?.appendLine(`\n${err}`);
+                this.clearLispProcess(spawnedChild);
+            });
+
+            spawnedChild.stdin?.write(lispCode);
 
             // Poll Swank port file
             let port: number | undefined;
@@ -176,40 +202,113 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                 throw new Error('Timeout waiting for Swank port file');
             }
 
+            this.lispPort = port;
             fs.unlinkSync(portFile);
             await this.connectTo('localhost', port);
         } catch (err: any) {
             vscode.window.showErrorMessage(`Failed to start Lisp: ${err.message || err}`);
-            this.statusDisconnected();
+            const processClient = this.lispClient;
+            const client = processClient && processClient.process === child
+                ? processClient.client
+                : undefined;
+            if (client && this.client === client) {
+                this.clearClient(client);
+                client.disconnect();
+            }
+            if (this.lispClient?.process === child) this.lispClient = undefined;
             if (fs.existsSync(portFile)) fs.unlinkSync(portFile);
-            this.lispProcess?.kill();
+            if (child && this.lispProcess === child) {
+                child.kill();
+                this.lispProcess = undefined;
+                this.lispPort = undefined;
+            }
+            if (!this.client && !this.lispProcess) this.statusDisconnected();
         }
     }
 
+
     public async quitLisp() {
-        if (!this.lispProcess) {
-            vscode.window.showErrorMessage('No Lisp process');
+        const child = this.lispProcess;
+
+        if (!child) {
+            this.clientReady = false;
+            this.client = undefined;
+            this.replProvider.setClient(undefined, undefined);
+            this.clearDebugViews();
+            this.statusDisconnected();
             return;
         }
-        const exited = new Promise(resolve => this.lispProcess?.on('exit', resolve));
-        // We might not be able to quit gracefully if lispProcess started but
-        // swank-client has not yet connected
-        if (this.clientReady) {
-            this.client.rex('(SWANK:QUIT-LISP)');
-            this.lispProcess.stdin?.end();
-            await new Promise(res => setTimeout(res, 200));
+
+        const client = this.lispClient?.process === child
+            ? this.lispClient.client
+            : undefined;
+
+        if (child.exitCode === null && child.signalCode === null) {
+            const exited = new Promise<void>(resolve => {
+                child.once('exit', () => resolve());
+            });
+
+            if (this.clientReady && this.client === client) {
+                void client.rex('(SWANK:QUIT-LISP)').catch((err: unknown) => {
+                    const detail = err instanceof Error ? err.message : err;
+                    this.lispOutputChannel?.appendLine(
+                        `Lisp shutdown request failed: ${detail}`
+                    );
+                });
+                child.stdin?.end();
+            }
+
+            if (child.exitCode === null && child.signalCode === null) {
+                // Give Lisp a short opportunity to exit gracefully.
+                await Promise.race([
+                    exited,
+                    new Promise<void>(resolve => setTimeout(resolve, 1000))
+                ]);
+
+                if (child.exitCode === null && child.signalCode === null) {
+                    child.kill();
+                    await Promise.race([
+                        exited,
+                        new Promise<void>(resolve => setTimeout(resolve, 2000))
+                    ]);
+                }
+            }
         }
-        if (!this.lispProcess?.exitCode)
-            this.lispProcess?.kill();
-        await exited;
+
+        if (client && this.client === client) {
+            this.clearClient(client);
+            client.disconnect();
+        } else if (!this.client) {
+            this.clientReady = false;
+            this.replProvider.setClient(undefined, undefined);
+            this.clearDebugViews();
+        }
+        if (this.lispClient?.process === child &&
+            this.lispClient.client === client) {
+            this.lispClient = undefined;
+        }
+
+        if (this.lispProcess === child &&
+            (child.exitCode !== null || child.signalCode !== null)) {
+            this.lispProcess = undefined;
+            this.lispPort = undefined;
+        }
+
+        if (!this.client && (!this.lispProcess || this.lispProcess === child)) {
+            this.statusDisconnected();
+        }
     }
+
 
     public disconnect() {
         if (!this.client) {
             vscode.window.showErrorMessage('Not connected to a Swank server');
             return;
         }
-        this.client?.disconnect();
+
+        const client = this.client;
+        this.clearClient(client);
+        client.disconnect();
     }
 
     public interrupt() {
@@ -218,25 +317,28 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
     }
 
     public async connectTo(host: string, port: number) {
+        let client: any;
         try {
             this.statusConnecting();
-            this.client = new Client(host, port);
+            client = new Client(host, port);
+            this.client = client;
+            if (this.lispProcess && this.lispPort === port &&
+                ['localhost', '127.0.0.1', '::1'].includes(host)) {
+                this.lispClient = { process: this.lispProcess, client };
+            }
             
-            await this.client.connect();
+            await client.connect();
+            if (this.client !== client) {
+                client.disconnect();
+                return;
+            }
             
-            this.client.on('disconnect', () => {
-                this.clientReady = false;
-                this.client = undefined;
-                this.statusDisconnected();
-                this.debugViews.forEach(v => {
-                    v.isHandled = true;
-                    v.panel.dispose();
-                });
-                this.debugViews.clear();
-                this.replProvider.setClient(undefined, undefined);
+            client.on('disconnect', () => {
+                this.clearClient(client);
             });
 
-            this.client.on('debug_setup', (info: any) => {
+            client.on('debug_setup', (info: any) => {
+                if (this.client !== client) return;
                 const view = this.debugViews.get(info.thread);
 
                 // VSCode focus management does not return focus when
@@ -253,11 +355,12 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                     view.setup(info, quitHook);
                 }
                 else {
-                    this.debugViews.set(info.thread, new DebugView(this.ctx, info, this.client, quitHook));
+                    this.debugViews.set(info.thread, new DebugView(this.ctx, info, client, quitHook));
                 }
             });
 
-            this.client.on('debug_return', (info: any) => {
+            client.on('debug_return', (info: any) => {
+                if (this.client !== client) return;
                 const view = this.debugViews.get(info.thread);
                 if (view) {
                     view.isHandled = true;
@@ -266,7 +369,8 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
                 }
             });
 
-            this.client.on('indentation_update', (info: any) => {
+            client.on('indentation_update', (info: any) => {
+                if (this.client !== client) return;
                 for (const item of info.children){
                     const symbol = util.from_lisp_string(item.children[0]);
                     const indentSpec = convertIndentSpec(item.children[1]);
@@ -281,26 +385,69 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
             });
 
             const events = ['presentation_start', 'presentation_end', 'debug_activate', 'read_from_minibuffer', 'y_or_n_p', 'read_aborted', 'profile_command_complete'];
-            events.forEach(e => this.client.on(e, (...args: any[]) => console.log(`Swank event: ${e}`, ...args)));
+            events.forEach(e => client.on(e, (...args: any[]) => console.log(`Swank event: ${e}`, ...args)));
 
             
-            const info = await this.client.initialize();
-            await this.client.rex("(SWANK:SWANK-REQUIRE '(SWANK-IO-PACKAGE::SWANK-MACROSTEP SWANK-IO-PACKAGE::SWANK-INDENTATION))",
+            const info = await client.initialize();
+            if (this.client !== client) return;
+            await client.rex("(SWANK:SWANK-REQUIRE '(SWANK-IO-PACKAGE::SWANK-MACROSTEP SWANK-IO-PACKAGE::SWANK-INDENTATION))",
                 'COMMON-LISP-USER', 'T');
+            if (this.client !== client) return;
             // SWANK's initial indentation scan races with loading
             // SWANK-INDENTATION above, and it only rescans when a new package
             // appears, so we can be stuck with swank.lisp's cruder specs. Force
             // rescan.
-            await this.client.rex('(SWANK:UPDATE-INDENTATION-INFORMATION)', 'COMMON-LISP-USER', 'T');
+            await client.rex('(SWANK:UPDATE-INDENTATION-INFORMATION)', 'COMMON-LISP-USER', 'T');
+            if (this.client !== client) return;
 
             this.clientReady = true;
             this.statusConnected();
-            this.replProvider.setClient(this.client, info);
+            this.replProvider.setClient(client, info);
             await vscode.commands.executeCommand('olive.replView.open', { preserveFocus: true })
         } catch (err) {
-            this.statusDisconnected();
-            vscode.window.showErrorMessage(`Failed to connect: ${err}`);
+            client?.disconnect();
+            if (this.client === client) {
+                this.clearClient(client);
+                vscode.window.showErrorMessage(`Failed to connect: ${err}`);
+            }
         }
+    }
+
+    private clearClient(client: any) {
+        if (!client || this.client !== client) return;
+
+        if (this.lispClient?.client === client) this.lispClient = undefined;
+        this.clientReady = false;
+        this.client = undefined;
+        this.replProvider.setClient(undefined, undefined);
+        this.clearDebugViews();
+        this.statusDisconnected();
+    }
+
+    private clearLispProcess(child: cp.ChildProcess) {
+        if (this.lispProcess !== child) return;
+
+        const client = this.lispClient?.process === child
+            ? this.lispClient.client
+            : undefined;
+        this.lispProcess = undefined;
+        this.lispPort = undefined;
+        if (this.lispClient?.process === child) this.lispClient = undefined;
+
+        if (client && this.client === client) {
+            this.clearClient(client);
+            client.disconnect();
+        } else if (!this.client) {
+            this.statusDisconnected();
+        }
+    }
+
+    private clearDebugViews() {
+        this.debugViews.forEach(v => {
+            v.isHandled = true;
+            v.panel.dispose();
+        });
+        this.debugViews.clear();
     }
 
     private statusDisconnected() {
@@ -372,28 +519,78 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         if (doc.isDirty) await doc.save();
 
         const fileName = doc.fileName;
+        const fileTitle = path.basename(fileName);
+        let res;
 
-        await vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: `Compiling ${path.basename(fileName)}...`,
-            cancellable: false
-        }, async (progress) => {
-            const cmd = `(SWANK:COMPILE-FILE-FOR-EMACS
+        try {
+            res = await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Compiling ${fileTitle}...`,
+                cancellable: false
+            }, async () => {
+                const cmd = `(SWANK:COMPILE-FILE-FOR-EMACS
 (UIOP:PARSE-NATIVE-NAMESTRING ${util.to_lisp_string(fileName)}) T :POLICY ${policy})`;
-            const res = await this.client.rex(cmd, 'COMMON-LISP-USER', 'T');
-            this.reportCompilationResult(doc, res);
 
-            if (res.type === 'list') {
-                const success = util.from_lisp_bool(res.children[2]);
-                const faslfile = util.from_lisp_bool(res.children[5]) && util.from_lisp_string(res.children[5]);
+                return await this.client.rex(cmd, 'COMMON-LISP-USER', 'T');
+            });
+        } catch (err) {
+            vscode.window.showErrorMessage(
+                `Failed to compile ${fileTitle}: ${err instanceof Error ? err.message : err}`
+            );
+            return;
+        }
 
-                if (faslfile &&
-                    (success ||
-                        await vscode.window.showInformationMessage('Compilation failed. Load fasl file anyway?',
-                            { modal: true }, 'Load') === 'Load'))
-                    this.client.rex(`(SWANK:LOAD-FILE ${util.to_lisp_string(faslfile)})`, 'COMMON-LISP-USER', 'T');
+        this.reportCompilationResult(doc, res);
+
+        if (res.type !== 'list') return;
+
+        const success = util.from_lisp_bool(res.children[2]);
+        const faslfile = util.from_lisp_bool(res.children[5]) &&
+            util.from_lisp_string(res.children[5]);
+
+        if (!faslfile) return;
+
+        if (!success &&
+            await vscode.window.showInformationMessage(
+                'Compilation failed. Load fasl file anyway?',
+                { modal: true },
+                'Load'
+            ) !== 'Load') {
+            return;
+        }
+
+        try {
+            const loadRes = await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Loading ${fileTitle}...`,
+                cancellable: false
+            }, async () => {
+                return await this.client.rex(
+                    `(SWANK:LOAD-FILE ${util.to_lisp_string(faslfile)})`,
+                    'COMMON-LISP-USER',
+                    'T'
+                );
+            });
+
+            const loadSuccess = loadSucceeded(loadRes);
+
+            if (!loadSuccess) {
+                const detail = loadResultText(loadRes);
+                vscode.window.showErrorMessage(
+                    `Compilation ${success ? 'succeeded' : 'failed'}, but loading ${fileTitle} failed: ${detail}`
+                );
+                return;
             }
-        });
+            vscode.window.showInformationMessage(
+                success
+                    ? `Compiled and loaded ${fileTitle}.`
+                    : `Loaded ${fileTitle} FASL despite compilation failure.`
+            );
+        } catch (err) {
+            vscode.window.showErrorMessage(
+                `Compilation ${success ? 'succeeded' : 'failed'}, but loading ${fileTitle} failed: ${err instanceof Error ? err.message : err}`
+            );
+        }
     }
 
     public async loadFile(editor: vscode.TextEditor, edit: vscode.TextEditorEdit) {
@@ -403,17 +600,32 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         if (doc.isDirty) await doc.save();
 
         const fileName = doc.fileName;
+        const fileTitle = path.basename(fileName);
 
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: `Loading ${path.basename(fileName)}...`,
+            title: `Loading ${fileTitle}...`,
             cancellable: false
-        }, async (progress) => {
-            const cmd = `(SWANK:LOAD-FILE
+        }, async () => {
+            try {
+                const cmd = `(SWANK:LOAD-FILE
 (UIOP:PARSE-NATIVE-NAMESTRING ${util.to_lisp_string(fileName)}))`;
-            await this.client.rex(cmd, 'COMMON-LISP-USER', 'T');
-            vscode.window.showInformationMessage('Load finished.');
-        })
+
+                const loadRes = await this.client.rex(cmd, 'COMMON-LISP-USER', 'T');
+                const loadSuccess = loadSucceeded(loadRes);
+
+                if (loadSuccess) {
+                    vscode.window.showInformationMessage(`Loaded ${fileTitle}.`);
+                } else {
+                    const detail = loadResultText(loadRes);
+                    vscode.window.showErrorMessage(`Loading ${fileTitle} failed: ${detail}`);
+                }
+            } catch (err) {
+                vscode.window.showErrorMessage(
+                    `Loading ${fileTitle} failed: ${err instanceof Error ? err.message : err}`
+                );
+            }
+        });
     }
 
     async compileRegion(doc: vscode.TextDocument, range: vscode.Range, policy: string = 'NIL') {
@@ -421,22 +633,28 @@ export class LispSession implements vscode.DocumentFormattingEditProvider, vscod
         const title = path.basename(fileName);
         const pkg = searchBufferPackage(doc, range.start);
 
-        await vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: `Compiling region in ${title}...`,
-            cancellable: false
-        }, async (progress) => {
-            const text = doc.getText(range);
-            const pos = `'((:POSITION ${doc.offsetAt(range.start) + 1}) (:LINE ${range.start.line + 1} ${range.start.character + 1}))`
-            // There might be some namestring vs native-namestring
-            // quriks here.  I want to use UIOP:PARSE-NATIVE-NAMESTRING,
-            // but SBCL want only string, not pathnames.
-            const cmd = `(SWANK:COMPILE-STRING-FOR-EMACS
+        try {
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Compiling region in ${title}...`,
+                cancellable: false
+            }, async () => {
+                const text = doc.getText(range);
+                const pos = `'((:POSITION ${doc.offsetAt(range.start) + 1}) (:LINE ${range.start.line + 1} ${range.start.character + 1}))`
+                // There might be some namestring vs native-namestring
+                // quriks here.  I want to use UIOP:PARSE-NATIVE-NAMESTRING,
+                // but SBCL want only string, not pathnames.
+                const cmd = `(SWANK:COMPILE-STRING-FOR-EMACS
 ${util.to_lisp_string(text)} ${util.to_lisp_string(doc.uri.toString())} ${pos}
 ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
-            const res = await this.client.rex(cmd, pkg, 'T');
-            this.reportCompilationResult(doc, res, range.start);
-        });
+                const res = await this.client.rex(cmd, pkg, 'T');
+                this.reportCompilationResult(doc, res, range.start);
+            });
+        } catch (err) {
+            vscode.window.showErrorMessage(
+                `Failed to compile region in ${title}: ${err instanceof Error ? err.message : err}`
+            );
+        }
     }
 
     private flashRegion(editor: vscode.TextEditor, range?: vscode.Range) {
@@ -531,21 +749,27 @@ ${doc.isUntitled ? 'NIL' : util.to_lisp_string(doc.fileName)} ${policy})`;
 
     public async loadSystem(systemName: string, systemFile?: string){
         if (!this.checkClient()) return;
-        await vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: `Loading system ${systemName}...`,
-            cancellable: false
-        }, async (progress) => {
-            if (systemFile) {
-                await this.client.rex(`(ASDF:LOAD-ASD (UIOP:PARSE-NATIVE-NAMESTRING ${util.to_lisp_string(systemFile)}))`,
+        try {
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Loading system ${systemName}...`,
+                cancellable: false
+            }, async () => {
+                if (systemFile) {
+                    await this.client.rex(`(ASDF:LOAD-ASD (UIOP:PARSE-NATIVE-NAMESTRING ${util.to_lisp_string(systemFile)}))`,
+                        'COMMON-LISP-USER', 'T');
+                }
+                const res = await this.client.rex(`(ASDF:LOAD-SYSTEM ${util.to_lisp_string(systemName)})`,
                     'COMMON-LISP-USER', 'T');
-            }
-            const res = await this.client.rex(`(ASDF:LOAD-SYSTEM ${util.to_lisp_string(systemName)})`,
-                'COMMON-LISP-USER', 'T');
-            const success = res.type === 'symbol' && res.source.toLowerCase() === 't';
-            if (success) vscode.window.showInformationMessage(`Loaded system ${systemName}`)
-            else vscode.window.showInformationMessage(`Failed to load system ${systemName}`)
-        })
+                const success = res.type === 'symbol' && res.source.toLowerCase() === 't';
+                if (success) vscode.window.showInformationMessage(`Loaded system ${systemName}`);
+                else vscode.window.showErrorMessage(`Failed to load system ${systemName}`);
+            });
+        } catch (err) {
+            vscode.window.showErrorMessage(
+                `Failed to load system ${systemName}: ${err instanceof Error ? err.message : err}`
+            );
+        }
     }
 
     public indentLine(editor: vscode.TextEditor, edit: vscode.TextEditorEdit) {
